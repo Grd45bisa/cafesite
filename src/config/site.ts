@@ -2,11 +2,11 @@
  * Site-wide SEO & brand configuration — single source of truth.
  * Dipakai oleh metadata API, sitemap, robots, manifest, dan JSON-LD.
  *
- * // TODO: ganti SITE_URL dengan domain produksi asli setelah deploy.
+ * // TODO: ganti SITE_URL dengan domain produksi asli (domain kustom) setelah setup.
  * Keywords/deskripsi menargetkan penelusuran lokal: cafe enak & nyaman
  * Jakarta Selatan/Tangerang, fasilitas kerja (Wi-Fi, colokan), dll.
  */
-export const SITE_URL = "https://cafesite.example.com";
+export const SITE_URL = "https://cafesite-five.vercel.app";
 
 export const siteConfig = {
   name: "CafeSite",

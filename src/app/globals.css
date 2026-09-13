@@ -76,3 +76,15 @@ body {
 *::-webkit-scrollbar {
   display: none;
 }
+
+/* Accessibility — focus ring terlihat jelas untuk navigasi keyboard */
+:where(a, button, input, summary, textarea, select, [role="button"], [tabindex]):focus-visible {
+  outline: 2px solid var(--color-terracotta-light);
+  outline-offset: 2px;
+}
+
+/* Teks terseleksi */
+::selection {
+  background-color: var(--color-terracotta);
+  color: var(--color-offwhite-pure);
+}

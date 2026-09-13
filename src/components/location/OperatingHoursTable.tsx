@@ -74,7 +74,7 @@ export function OperatingHoursTable({
                         {schedule.hours}
                       </span>
                       {schedule.notes && (
-                        <span className="text-[11px] text-offwhite-darker">
+                        <span className="hidden text-[11px] text-offwhite-darker sm:inline">
                           {schedule.notes}
                         </span>
                       )}

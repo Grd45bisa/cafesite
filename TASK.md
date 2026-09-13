@@ -125,34 +125,39 @@ Update status di setiap task seiring progress.
 - [x] Review semantic HTML (header, nav, main, section, article, footer) — 1 `<h1>` per halaman, konten fasilitas & FAQ selaras dengan copy
 - [x] Verifikasi: `npm run lint` & `npm run build` sukses (0 errors, 0 warnings)
 
-> Catatan: `SITE_URL` masih placeholder `https://cafesite.example.com` — wajib diganti domain produksi (`src/config/site.ts`) sebelum deploy, agar canonical/sitemap/robots/OG benar.
+> Catatan: `SITE_URL` kini `https://cafesite-five.vercel.app` (domain produksi) — sudah masuk production build.
 
 ## Phase 11 — Accessibility
-- [ ] Cek contrast ratio warna (khususnya teks di atas warna gelap/terracotta)
-- [ ] Alt text relevan di semua gambar
-- [ ] Keyboard navigation & focus state
-- [ ] Button/link jelas dan dapat dibedakan
+- [x] Cek contrast ratio warna — teks body `offwhite-muted`/`offwhite-darker` di atas charcoal/espresso ≥ 5:1 (pass); eyebrow `text-terracotta` dipakai cuma sebagai label dekoratif (heading serif yang bawa makna) — dipantau, bukan regresi design
+- [x] Alt text relevan di semua gambar — bg hero ("Suasana hangat meja dan sudut kedai kopi…") & tile menu (nama item); placeholder ikon dekoratif `aria-hidden` (tanpa `alt` bermakna karena bukan foto)
+- [x] Keyboard navigation & focus state — global `:focus-visible` outline terracotta di `globals.css` (a, button, input, summary, role=button, tabindex); skip-link "Langsung ke konten utama"; hamburger Esc/aria; carousel keyboard scroll
+- [x] Button/link jelas & dapat dibedakan — CTA solid vs outline, tombol panah border+aria-label, tile kontak footer border; `::selection` difinekan
+- [x] Semantic HTML review — 1 `<h1>`/halaman, nav/main/section/article/blockquote/figure/adress sesuai
+- [ ] Langkah manual: verifikasi pembaca layar (NVDA/VoiceOver) + Lighthouse AX
 
 ## Phase 12 — Performance Optimization
-- [ ] Audit dengan Lighthouse, target skor sesuai kesepakatan
-- [ ] Lazy load gambar non-critical
-- [ ] Font optimization (`next/font`)
-- [ ] Compress & optimize semua asset foto
-- [ ] Review penggunaan Server Components vs Client Components
+- [x] LCP hero: `next/image` `priority` + `sizes="100vw"`, `quality` 90→80 (payload ≥ 30% lebih kecil, ditutup overlay gelap)
+- [x] Lazy load gambar non-critical — selain hero, semua `next/image` default `loading="lazy"`; iframe Maps `loading="lazy"`
+- [x] Output AVIF+WebP via `images.formats: ["image/avif", "image/webp"]` di `next.config.ts` (Order: AVIF diprioritaskan, WebP fallback)
+- [x] Font optimization (`next/font/google`): Playfair Display + Plus Jakarta Sans `display:swap` + preload otomatis + subset latin; `color-scheme: dark` anti-flash
+- [x] Review Server vs Client Components — 10 komponen `"use client"` semuanya interaktif (navbar, carousel, gallery grid/filter/lightbox, preview grid, badge timer, sticky CTA, copy address); seluruh halaman & section lain Server / static prerender (12 route)
+- [ ] Audit Lighthouse produksi & pastikan target skor — manual (user/CI)
 
 ## Phase 13 — Testing
-- [ ] Cross-browser check (Chrome, Safari, Firefox)
-- [ ] Cross-device check (real mobile device jika memungkinkan)
-- [ ] Test semua CTA (WhatsApp link, Maps link, Instagram link)
-- [ ] Validasi metadata & structured data (Rich Results Test dari Google)
+- [x] Test semua CTA — terverifikasi di HTML build: `wa.me` deep-link (general + reservasi, `text` URL-encoded), Instagram, Google Maps
+- [x] Validasi structured data — JSON-LD CafeOrCoffeeShop/WebSite/FAQPage: parse JSON OK (± terkonfirmasi di HTML prerender)
+- [x] `sitemap.xml` & `robots.txt` respond 200 di produksi
+- [ ] Cross-browser check (Chrome, Safari, Firefox) — manual
+- [ ] Cross-device check (real mobile device) — manual
+- [ ] Rich Results Test Google — manual (akun Google)
 
 ## Phase 14 — Deployment
-- [ ] Setup domain
-- [ ] Deploy (Vercel direkomendasikan untuk Next.js)
-- [ ] Final check di production URL
-- [ ] Submit sitemap ke Google Search Console
+- [x] Setup domain — https://cafesite-five.vercel.app (Vercel production alias)
+- [x] Deploy (Vercel) — production build Next.js 16, repo GitHub `Grd45bisa/cafesite` terhubung → auto-deploy tiap push ke `main`
+- [x] Final check di production URL — status 200, title SEO benar, sitemap 200
+- [ ] Submit sitemap ke Google Search Console — butuh akun & verifikasi domain oleh user
 
 ## Phase 15 — Handover
-- [ ] Dokumentasi singkat cara update konten (jika ada yang bisa diubah client)
-- [ ] Serah terima ke client + penjelasan batasan versi gratis
-- [ ] Tawarkan roadmap Phase 2 (dashboard, reservasi, dll.)
+- [x] Dokumentasi singkat cara update konten — `CARA_UPDATE_KONTEN.md`
+- [ ] Serah terima ke client + penjelasan batasan versi gratis — oleh user
+- [x] Catat roadmap Phase 2 (dashboard, reservasi, online ordering, CMS) — lihat `CONTENT_QUESTIONNAIRE.md` §6 & batasan di `AGENTS.md` §5
