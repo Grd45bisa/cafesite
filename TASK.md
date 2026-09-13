@@ -161,3 +161,65 @@ Update status di setiap task seiring progress.
 - [x] Dokumentasi singkat cara update konten — `CARA_UPDATE_KONTEN.md`
 - [ ] Serah terima ke client + penjelasan batasan versi gratis — oleh user
 - [x] Catat roadmap Phase 2 (dashboard, reservasi, online ordering, CMS) — lihat `CONTENT_QUESTIONNAIRE.md` §6 & batasan di `AGENTS.md` §5
+
+## Tugas Terbaru — Draft (masih dipikirkan)
+> Bagian ini belum dikunci — isi akan disesuaikan setelah user memutuskan arah berikutnya.
+
+### Admin Dashboard — Phase 2 (berbayar) — Opsi A: Content-Only CMS + Online Ordering (ala Mi Gacoan) + Payment Gateway
+**Keputusan:** Dashboard = control panel konten + penerima pesanan; website utama baca dari database. **Opsi A** → dashboard mengurus *konten data* (menu, info, galeri, testimoni, FAQ, panduan). Copy marketing (hero headline, intro section, cerita About) tetap di kode/copywriter. **Tambah:** customer bisa **pesan via website** tanpa akun, alur ala Mi Gacoan + **QR per meja & sketsa meja per lantai** + **Payment Gateway** (wajib ada, tapi provider masih dicari — yang registrasinya simpel, modal KTP saja).
+
+**Arsitektur (rencana):**
+- Database + Auth + Storage + Realtime: **Supabase** (Postgres + Auth + Storage + Realtime via **WebSocket**, free tier) — semua status pesanan, notifikasi, dan perubahan data dikirim real-time tanpa refresh
+- Admin/staff di route `/admin` (login), web tetap statis
+- Save → "Simpan & Publikasikan" (revalidate/ISR); menu **DB-driven** (sumber sama dgn yang dipesan customer)
+- Cart customer pakai localStorage + React Context (tanpa library tambahan)
+- **Payment Gateway** → integrasi menunggu keputusan provider (webhook pembayaran diarahkan ke server route/edge function; COD tetap diproses manual oleh kasir)
+- **Sistem pemesanan wajib pakai WebSocket** — customer & staff/admin terima update real-time (pesanan masuk, status berubah, item ditambah) tanpa harus refresh
+
+**Alur pemesanan customer (ala Gacoan, tanpa akun):**
+- [ ] Scan **QR di tiap meja** (atau buka menu manual) → langsung buka halaman pemesanan dengan meja terdeteksi (mis. `/order?meja=L1-03`)
+- [ ] Menu page → tombol "Pesan" tiap item (qty + catatan request)
+- [ ] Keranjang (drawer) → checkout singkat: nama + no HP
+- [ ] Dapat nomor antrian (mis. `A-023`)
+- [ ] **Pembayaran:** pilih metode — **Payment Gateway** (QRIS / ewallet / kartu) ATAU **COD / bayar di kasir**
+- [ ] Customer (setelah pesan) melihat **status pesanan ter-update real-time via WebSocket** (Menunggu → Diproses → Siap diambil → Selesai) tanpa refresh — user dan staff/admin lihat hal yang sama
+- [ ] Staff update status: Menunggu → Diproses → Siap diambil → Selesai
+
+**Modul dashboard (peta koneksi ke website utama):**
+- [ ] **Pesanan (antrian real-time)** — list pesanan masuk (siapa, pesen apa, qty, total, status), update via Supabase Realtime → baru, modul utama staff
+- [ ] **Menu** — CRUD item (nama, deskripsi, harga, kategori, tags, isFeatured, urutan, foto) → `/menu`, Featured Home, & sumber yang dipesan
+- [ ] **Tata Letak Meja & QR** — tambah/hapus **lantai** (Lantai 1, Lantai 2, dst. — fleksibel), **sketsa meja per lantai** (edit posisi drag & drop), tiap meja punya ID unik + QR (generate & export untuk cetak stiker), status meja kosong/terisi → customer scan QR buat pesan
+- [ ] **Info Kafe & Jam Buka** — nama, tagline, alamat, landmark, kota, jam 7 hari + openTime/closeTime + notes, WhatsApp, Instagram, Maps/UAPI embed → Hero/LocationCTA/Location/Footer
+- [ ] **Galeri** — upload foto, kategori, caption, aspect, urutan → Home collage & `/gallery`
+- [ ] **Testimoni** — nama, sumber, rating, komentar, tanggal → Home
+- [ ] **FAQ & Panduan Lokasi** — FAQ (ikut JSON-LD FAQPage Google/AI) + kartu transportasi → `/location`
+- [ ] (admin only) **Module Management** — toggle module aktif/non-aktif untuk dashboard staff
+- [ ] (opsional dipertimbangkan nanti) **Pengaturan SEO** — deskripsi, keywords, SITE_URL
+
+**Fitur operasional (Must-Have — tanpa ini operasional cafe nggak jalan):**
+- [ ] **Notifikasi pesanan baru — real-time via WebSocket** — suara/vibrasi di dashboard staff saat pesanan masuk (Notification API + Web Audio API, tanpa dependency baru)
+- [ ] **Status meja** — kosong / terisi / butuh dibersihkan; setelah pesanan selesai otomatis jadi "butuh dibersihkan", staff yang update
+- [ ] **Item "habis" / unavailable** — toggle dari staff/admin → otomatis hilang dari menu yang bisa dipesan customer
+- [ ] **Order history + laporan ringkas** — pendapatan **hari ini / minggu ini / bulan ini**, filter rentang tanggal (tanggal X s/d tanggal Y, maksimal 1 bulan), item terlaris, jam ramai (buat admin)
+- [ ] **Add-on ke pesanan yang sama** — customer bisa tambah item ke pesanan yang masih berjalan tanpa buat pesanan baru
+
+**Role (konsep: dashboard staff = dashboard admin, beda hanya pengaturan module):**
+- [ ] **Admin** — akses semua module + **Module Management**: setting module mana yang aktif/non-aktif untuk dashboard staff (toggle per module)
+- [ ] **Staff/Kasir** — UI identik dengan admin; hanya melihat module yang di-enable admin (mis. default cuma "Pesanan" & "Status"; "Testimoni"/"Pengaturan" bisa di-nonaktifkan admin)
+- [ ] Setiap dashboard website punya admin + staff — perbedaan cuma konfigurasi module (bukan beda aplikasi/layout)
+
+**Pertanyaan yang belum dijawab user (masih menunggu):**
+- [ ] Dipakai siapa? Owner sendiri / tim+karyawan (butuh berapa akun/role)?
+- [ ] Upload foto langsung dari dashboard: wajib atau tidak?
+- [ ] Fitur reservasi (list pemesanan dari WA) ikut dashboard ini atau fase terpisah?
+- [ ] Save langsung update web, atau ada tombol "Publish" dulu?
+- [ ] Payment gateway: **wajib ada**; masih mencari provider yang registrasi simpel (modal KTP saja, tanpa ribet) — kandidat yang harus dicek: **Tripay**, **Midtrans**, **Xendit**, **Ipaymu** (putusan menyusul setelah riset user)
+- [ ] QR meja: owner butuh export buat cetak stiker sendiri, atau cukup tampil di dashboard? (mis. dapat file PDF/gambar per meja)
+- [ ] Mau ada opsi "Bawa Pulang / Takeaway" (tanpa meja) juga, atau murni order per meja dulu?
+- [ ] Sketsa meja: posisi meja bebas (drag & drop manual) atau pakai grid/kamar tetap (mis. 2x2, 3x3) biar rapi?
+
+---
+
+### Catatan lama (sebelumnya)
+- [ ] (perlu diputuskan) Arah selanjutnya: versi lanjutan / perombakan / fitur baru
+- [ ] Kandidat: data asli client (alamat, jam, menu, foto, nomor WA) masuk ke `src/data/*`
