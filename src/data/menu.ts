@@ -30,21 +30,21 @@ export const menuItems: MenuItem[] = [
   },
   {
     id: "c-02",
-    name: "Caramel Macchiato", // TODO: ganti dengan data asli client
+    name: "Caramel Macchiato",
     description: "Espresso, susu, dan saus caramel yang nggak pelit. Rata-rata yang pertama kali ke sini pesen ini.",
     price: 28000,
     category: "coffee",
-    image: "/images/menu/coffee-caramel-macchiato.jpg",
+    image: "/Image/Menu/C_Macchiato.png",
     tags: ["Best Seller", "Sweet"],
     isFeatured: true,
   },
   {
     id: "c-03",
-    name: "Manual Brew V60", // TODO: ganti dengan data asli client
+    name: "Manual Brew V60",
     description: "Single origin yang diseduh manual. Aciditynya kelihatan, floral, sedikit fruity.",
     price: 30000,
     category: "coffee",
-    image: "/images/menu/coffee-v60.jpg",
+    image: "/Image/Menu/V60.png",
     tags: ["Signature", "Artisanal"],
     isFeatured: true,
   },
@@ -52,11 +52,11 @@ export const menuItems: MenuItem[] = [
   // --- Kategori: Non-Coffee ---
   {
     id: "nc-01",
-    name: "Matcha Latte", // TODO: ganti dengan data asli client
+    name: "Matcha Latte",
     description: "Matcha Uji asli, susunya bikin creamy. Nggak pait-pait amat.",
     price: 26000,
     category: "non-coffee",
-    image: "/images/menu/noncoffee-matcha.jpg",
+    image: "/Image/Menu/Macha_latte.png",
     tags: ["Best Seller", "Japanese"],
     isFeatured: true,
   },

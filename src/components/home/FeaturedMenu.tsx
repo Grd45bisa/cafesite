@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { Button } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import { SectionHeading } from "@/components/ui/SectionHeading";
@@ -14,11 +15,22 @@ import type { MenuItem } from "@/types";
  */
 function MenuItemTile({ item }: { item: MenuItem }) {
   return (
-    <article className="flex items-center gap-3 rounded-md border border-charcoal-border/50 bg-charcoal-light/40 p-2.5 transition-colors hover:border-charcoal-border md:flex-col md:items-stretch md:gap-0 md:overflow-hidden md:p-0">
+    <article className="group flex items-center gap-3 rounded-md border border-charcoal-border/50 bg-charcoal-light/40 p-2.5 transition-colors hover:border-charcoal-border md:flex-col md:items-stretch md:gap-0 md:overflow-hidden md:p-0">
       {/* Thumbnail Foto Menu */}
-      {/* // TODO: ganti dengan foto asli dari PHOTO_BRIEF.md via next/image saat asset fisik tersedia */}
-      <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md bg-charcoal-lighter md:h-auto md:w-full md:rounded-none md:aspect-[4/3]">
-        <ImageIcon className="h-6 w-6 text-charcoal-muted md:h-7 md:w-7" />
+      <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md bg-charcoal-lighter md:h-auto md:w-full md:rounded-none md:aspect-[4/3]">
+        {item.image ? (
+          <Image
+            src={item.image}
+            alt={item.name}
+            fill
+            sizes="(max-width: 768px) 64px, (max-width: 1200px) 33vw, 380px"
+            className="object-cover object-center transition-transform duration-300 group-hover:scale-105"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center">
+            <ImageIcon className="h-6 w-6 text-charcoal-muted md:h-7 md:w-7" />
+          </div>
+        )}
       </div>
 
       <div className="min-w-0 flex-1 flex flex-col justify-between md:p-5">
