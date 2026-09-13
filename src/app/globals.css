@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+@theme {
+  /* 1. Charcoal Black (#20201E) - 60% Primary Dark Canvas */
+  --color-charcoal-darkest: #141413;
+  --color-charcoal: #20201E;
+  --color-charcoal-light: #2C2C29;
+  --color-charcoal-lighter: #383834;
+  --color-charcoal-border: #454540;
+  --color-charcoal-muted: #63635E;
+
+  /* 2. Warm Off-White (#F1EEE8) - 25% Primary Text & Light Surface */
+  --color-offwhite-pure: #FAF8F5;
+  --color-offwhite: #F1EEE8;
+  --color-offwhite-subtle: #E8E3D9;
+  --color-offwhite-muted: #C5BFB2;
+  --color-offwhite-darker: #A8A295;
+
+  /* 3. Terracotta / Brick Red (#A6533F) - 10% Primary Accent & CTA */
+  --color-terracotta-light: #C46B55;
+  --color-terracotta: #A6533F;
+  --color-terracotta-hover: #8E4230;
+  --color-terracotta-dark: #733324;
+  --color-terracotta-subtle: #F6EAE7;
+
+  /* 4. Coffee Brown (#70483A) - 5% Secondary Accent & Depth */
+  --color-coffee-light: #8C5E4E;
+  --color-coffee: #70483A;
+  --color-coffee-hover: #5A372B;
+  --color-coffee-dark: #45281E;
+
+  /* 5. Latte Cream (#C8A98A) - Supporting Highlight & Badges */
+  --color-latte-light: #E6D7C7;
+  --color-latte: #C8A98A;
+  --color-latte-dark: #A68463;
+
+  /* 6. Deep Espresso (#332722) - Deep Surface & Footer Contrast */
+  --color-espresso-light: #42332D;
+  --color-espresso: #332722;
+  --color-espresso-dark: #241B18;
+
+  /* Font Pairing */
+  --font-serif: var(--font-playfair), serif;
+  --font-sans: var(--font-jakarta), sans-serif;
+
+  /* Shadows */
+  --shadow-floating: 0 10px 30px -8px rgb(0 0 0 / 0.55);
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html {
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+body {
+  background-color: var(--color-charcoal);
+  color: var(--color-offwhite);
+  font-family: var(--font-sans);
+  min-height: 100vh;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+/* Sembunyikan scrollbar di seluruh elemen secara global (tetap bisa di-scroll) */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+}
