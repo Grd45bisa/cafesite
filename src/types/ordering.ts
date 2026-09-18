@@ -12,7 +12,7 @@ export interface CartContextValue {
 }
 export interface CartProviderProps { children: ReactNode }
 export interface OrderMenuProps { initialMenu: MenuItem[]; tableCode: string; addToOrderId: string }
-export interface OrderMenuCardProps { item: MenuItem; quantity: number; onAdd: () => void }
+export interface OrderMenuCardProps { item: MenuItem; quantity: number; onAdd: () => void; onDecrease: () => void }
 export interface CartDrawerProps {
   open: boolean;
   onClose: () => void;

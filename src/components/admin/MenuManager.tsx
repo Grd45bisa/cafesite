@@ -1,10 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Image from "next/image";
-import type { AdminMenuRecord, MenuCategory, MenuItem } from "@/types";
-import { getBrowserSupabase } from "@/lib/supabase/browser";
-import { adminButtonClass, adminError, adminInputClass, adminRequest, adminSecondaryClass } from "./admin-api";
+import type { AdminMenuRecord, MenuCategory, MenuCategoryMeta, MenuItem } from "@/types";
+import { menuCategories as defaultCategories } from "@/data/menu";
+import { adminButtonClass, adminError, adminRequest, adminSecondaryClass } from "./admin-api";
+import AdminNotice from "./AdminNotice";
+import MenuFormModal from "./MenuFormModal";
+import MenuCategoryGroup from "./MenuCategoryGroup";
+import CategoryManagerModal from "./CategoryManagerModal";
 
 const blank: MenuItem = {
   id: "",
@@ -17,286 +20,247 @@ const blank: MenuItem = {
   isAvailable: true,
 };
 
-const categories: MenuCategory[] = ["coffee", "non-coffee", "food", "snack", "dessert"];
+type Modal = { initial: MenuItem; initialSort: number; editing: boolean } | null;
 
 export default function MenuManager(): React.JSX.Element {
   const [rows, setRows] = useState<AdminMenuRecord[]>([]);
-  const [item, setItem] = useState<MenuItem>(blank);
-  const [sort, setSort] = useState(0);
+  const [categories, setCategories] = useState<MenuCategoryMeta[]>(defaultCategories);
+  const [modal, setModal] = useState<Modal>(null);
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async (): Promise<void> => {
     try {
-      const result = await adminRequest<{ data: AdminMenuRecord[] }>("manage?resource=menu");
-      setRows(result.data);
+      const [menuResult, catResult] = await Promise.allSettled([
+        adminRequest<{ data: AdminMenuRecord[] }>("manage?resource=menu"),
+        adminRequest<{ data: MenuCategoryMeta[] | null }>("manage?resource=categories"),
+      ]);
+
+      let currentRows: AdminMenuRecord[] = [];
+      if (menuResult.status === "fulfilled") {
+        currentRows = menuResult.value.data;
+        setRows(currentRows);
+      } else {
+        setError(adminError(menuResult.reason));
+      }
+
+      let activeCats = defaultCategories;
+      if (catResult.status === "fulfilled" && Array.isArray(catResult.value.data) && catResult.value.data.length > 0) {
+        activeCats = catResult.value.data;
+      }
+
+      // Pastikan jika ada kategori di menu yang belum ada di list kategori, tetap muncul
+      const existingCatIds = new Set(activeCats.map((c) => c.id));
+      const extraCats: MenuCategoryMeta[] = [];
+      currentRows.forEach((r) => {
+        const catId = r.data.category;
+        if (catId && !existingCatIds.has(catId)) {
+          existingCatIds.add(catId);
+          extraCats.push({
+            id: catId,
+            name: catId.charAt(0).toUpperCase() + catId.slice(1).replace(/-/g, " "),
+            description: "",
+          });
+        }
+      });
+
+      setCategories([...activeCats, ...extraCats]);
     } catch (cause: unknown) {
-      setMessage(adminError(cause));
+      setError(adminError(cause));
+    } finally {
+      setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    void (async (): Promise<void> => {
-      try {
-        const result = await adminRequest<{ data: AdminMenuRecord[] }>("manage?resource=menu");
-        if (!cancelled) setRows(result.data);
-      } catch (cause: unknown) {
-        if (!cancelled) setMessage(adminError(cause));
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
+    const timer = window.setTimeout(() => {
+      void load();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
 
-  async function save(event: React.FormEvent): Promise<void> {
-    event.preventDefault();
+  async function save(item: MenuItem, sortOrder: number): Promise<void> {
     setBusy(true);
+    setError("");
     try {
-      await adminRequest("manage?resource=menu", {
-        method: "PUT",
-        body: JSON.stringify({ item, sortOrder: sort }),
-      });
-      setMessage("Menu tersimpan dan langsung dipublikasikan.");
-      setItem(blank);
+      await adminRequest("manage?resource=menu", { method: "PUT", body: JSON.stringify({ item, sortOrder }) });
+      setMessage(modal?.editing ? "Perubahan menu sudah tersimpan." : "Menu baru sudah tersimpan dan langsung dipublikasikan.");
+      setModal(null);
       await load();
     } catch (cause: unknown) {
-      setMessage(adminError(cause));
+      setError(adminError(cause));
     } finally {
       setBusy(false);
     }
   }
 
-  async function remove(id: string): Promise<void> {
-    if (!confirm("Hapus menu ini?")) return;
+  async function remove(record: AdminMenuRecord): Promise<void> {
+    if (!confirm(`Hapus ${record.data.name}?`)) return;
+    setError("");
     try {
-      await adminRequest("manage?resource=menu", {
-        method: "DELETE",
-        body: JSON.stringify({ id }),
-      });
-      await load();
+      await adminRequest("manage?resource=menu", { method: "DELETE", body: JSON.stringify({ id: record.id }) });
+      setRows((current) => current.filter((row) => row.id !== record.id));
+      setMessage(`${record.data.name} sudah dihapus.`);
     } catch (cause: unknown) {
-      setMessage(adminError(cause));
+      setError(adminError(cause));
     }
   }
 
-  async function upload(file: File): Promise<void> {
-    const client = getBrowserSupabase();
-    if (!client) {
-      setMessage("Supabase belum aktif.");
-      return;
+  async function handleReorder(category: MenuCategory, updatedCategoryRecords: AdminMenuRecord[]): Promise<void> {
+    const combinedRows: AdminMenuRecord[] = [];
+    categories.forEach((cat) => {
+      if (cat.id === category) {
+        combinedRows.push(...updatedCategoryRecords);
+      } else {
+        combinedRows.push(...rows.filter((r) => r.data.category === cat.id));
+      }
+    });
+
+    const rowsWithSort = combinedRows.map((r, idx) => ({ ...r, sort_order: idx }));
+    setRows(rowsWithSort);
+
+    const reorderPayload = updatedCategoryRecords.map((r) => {
+      const globalIdx = rowsWithSort.findIndex((item) => item.id === r.id);
+      return { id: r.id, sort_order: globalIdx >= 0 ? globalIdx : 0 };
+    });
+
+    try {
+      await adminRequest("manage?resource=menu", {
+        method: "PUT",
+        body: JSON.stringify({ reorder: reorderPayload }),
+      });
+      setMessage("Urutan menu berhasil diperbarui.");
+    } catch (cause: unknown) {
+      setError(adminError(cause));
+      await load();
     }
-    if (file.size > 5_242_880 || !/^image\/(jpeg|png|webp|avif)$/.test(file.type)) {
-      setMessage("Foto harus JPG, PNG, WebP, atau AVIF maksimal 5 MB.");
-      return;
-    }
+  }
+
+  async function handleSaveCategories(updatedCategories: MenuCategoryMeta[]): Promise<void> {
     setBusy(true);
-    const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-    const path = `menu/${crypto.randomUUID()}.${ext}`;
-    const { error } = await client.storage.from("cafe-assets").upload(path, file, { contentType: file.type });
-    if (error) {
-      setMessage("Upload foto gagal.");
-    } else {
-      const publicUrl = client.storage.from("cafe-assets").getPublicUrl(path).data.publicUrl;
-      setItem((current) => ({ ...current, image: publicUrl }));
+    setError("");
+    try {
+      await adminRequest("manage?resource=categories", {
+        method: "PUT",
+        body: JSON.stringify({ data: updatedCategories }),
+      });
+      setCategories(updatedCategories);
+      setMessage("Daftar kategori berhasil disimpan.");
+    } catch (cause: unknown) {
+      setError(adminError(cause));
+      throw cause;
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
+  }
+
+  if (loading && rows.length === 0 && !error) {
+    return (
+      <section className="rounded-2xl border border-charcoal-border bg-charcoal p-6">
+        <p role="status" className="animate-pulse text-sm text-latte">
+          Menyiapkan daftar menu…
+        </p>
+      </section>
+    );
   }
 
   return (
-    <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
-      <section className="rounded-2xl border border-charcoal-border bg-charcoal p-5 md:p-6">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="font-serif text-2xl">Daftar menu</h2>
+    <div className="grid gap-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="max-w-xl text-sm leading-6 text-offwhite-muted">
+          Menu yang tersimpan di sini langsung tampil di halaman pemesanan dan situs kedai.
+        </p>
+        <div className="flex items-center gap-2.5">
           <button
             type="button"
-            className={adminSecondaryClass}
-            onClick={() => {
-              setItem(blank);
-              setSort(rows.length);
-            }}
+            className={`${adminSecondaryClass} shrink-0 text-xs sm:text-sm`}
+            onClick={() => setCategoryModalOpen(true)}
           >
-            Tambah menu
+            Kelola Kategori ({categories.length})
+          </button>
+          <button
+            type="button"
+            className={`${adminButtonClass} shrink-0 text-xs sm:text-sm`}
+            onClick={() =>
+              setModal({
+                initial: {
+                  ...blank,
+                  category: (categories[0]?.id as MenuCategory) || "coffee",
+                  id: "",
+                },
+                initialSort: rows.length,
+                editing: false,
+              })
+            }
+          >
+            + Tambah menu
           </button>
         </div>
+      </div>
 
+      <AdminNotice message={error} error />
+      <AdminNotice message={message} />
+
+      <section className="rounded-2xl border border-charcoal-border bg-charcoal p-5 md:p-6">
         {rows.length === 0 ? (
-          <p className="mt-5 rounded-xl border border-dashed border-charcoal-border p-6 text-sm text-offwhite-darker">
+          <p className="rounded-xl border border-dashed border-charcoal-border p-6 text-center text-sm text-offwhite-darker">
             Belum ada menu. Gunakan tombol “Tambah menu” untuk mulai mengisi.
           </p>
         ) : (
-          <div className="mt-5 space-y-3">
-            {rows.map((row) => (
-              <article
-                key={row.id}
-                className="flex items-center gap-3 rounded-xl border border-charcoal-border p-3"
-              >
-                {row.data.image ? (
-                  <Image
-                    src={row.data.image}
-                    alt={row.data.name}
-                    width={56}
-                    height={56}
-                    className="h-14 w-14 shrink-0 rounded-lg object-cover"
-                  />
-                ) : (
-                  <div className="h-14 w-14 shrink-0 rounded-lg bg-charcoal-lighter" aria-hidden="true" />
-                )}
-                <div className="min-w-0 flex-1">
-                  <h3 className="truncate text-sm font-semibold text-offwhite">{row.data.name}</h3>
-                  <p className="text-xs text-offwhite-darker">
-                    Rp {row.data.price.toLocaleString("id-ID")} · {row.is_available ? "Tersedia" : "Habis"}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  className="min-h-11 px-2 text-xs text-latte transition-colors hover:text-latte-light"
-                  onClick={() => {
-                    setItem({ ...row.data, isAvailable: row.is_available });
-                    setSort(row.sort_order);
-                  }}
-                >
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  className="min-h-11 px-2 text-xs text-terracotta-light transition-colors hover:text-offwhite"
-                  onClick={() => void remove(row.id)}
-                >
-                  Hapus
-                </button>
-              </article>
-            ))}
-          </div>
+          categories.map((category) => {
+            const records = rows.filter((row) => row.data.category === category.id);
+            if (records.length === 0) return null;
+            return (
+              <MenuCategoryGroup
+                key={category.id}
+                category={category.id}
+                name={category.name}
+                description={category.description}
+                records={records}
+                onEdit={(record) =>
+                  setModal({
+                    initial: { ...record.data, isAvailable: record.is_available },
+                    initialSort: record.sort_order,
+                    editing: true,
+                  })
+                }
+                onRemove={(record) => void remove(record)}
+                onReorder={(reordered) => void handleReorder(category.id, reordered)}
+              />
+            );
+          })
         )}
       </section>
 
-      <form
-        onSubmit={(event) => void save(event)}
-        className="rounded-2xl border border-charcoal-border bg-charcoal p-5 md:p-6"
-      >
-        <h2 className="font-serif text-2xl">{item.id ? "Edit menu" : "Menu baru"}</h2>
-        <div className="mt-5 grid gap-4">
-          <label className="grid gap-2 text-sm">
-            ID menu
-            <input
-              required
-              placeholder="contoh: espresso"
-              value={item.id}
-              onChange={(event) =>
-                setItem({ ...item, id: event.target.value.replace(/\s+/g, "-").toLowerCase() })
-              }
-              className={adminInputClass}
-            />
-          </label>
-          <label className="grid gap-2 text-sm">
-            Nama
-            <input
-              required
-              placeholder="Nama menu"
-              value={item.name}
-              onChange={(event) => setItem({ ...item, name: event.target.value })}
-              className={adminInputClass}
-            />
-          </label>
-          <label className="grid gap-2 text-sm">
-            Deskripsi
-            <textarea
-              required
-              placeholder="Singkat dan mengundang."
-              value={item.description}
-              onChange={(event) => setItem({ ...item, description: event.target.value })}
-              className={`${adminInputClass} min-h-24`}
-            />
-          </label>
-          <label className="grid gap-2 text-sm">
-            Harga
-            <input
-              required
-              type="number"
-              min="0"
-              placeholder="25000"
-              value={item.price || ""}
-              onChange={(event) => setItem({ ...item, price: Number(event.target.value) })}
-              className={adminInputClass}
-            />
-          </label>
-          <label className="grid gap-2 text-sm">
-            Kategori
-            <select
-              value={item.category}
-              onChange={(event) => setItem({ ...item, category: event.target.value as MenuCategory })}
-              className={adminInputClass}
-            >
-              {categories.map((category) => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="grid gap-2 text-sm">
-            Tag (pisahkan koma)
-            <input
-              placeholder="mis. signature, lokal"
-              value={item.tags?.join(", ") ?? ""}
-              onChange={(event) =>
-                setItem({
-                  ...item,
-                  tags: event.target.value.split(",").map((tag) => tag.trim()).filter(Boolean),
-                })
-              }
-              className={adminInputClass}
-            />
-          </label>
-          <label className="grid gap-2 text-sm">
-            Urutan tampil
-            <input
-              type="number"
-              min="0"
-              value={sort}
-              onChange={(event) => setSort(Number(event.target.value))}
-              className={adminInputClass}
-            />
-          </label>
-          <label className="grid gap-2 text-sm">
-            Foto menu
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/avif"
-              disabled={busy}
-              className="file:mr-3 file:rounded-lg file:border-0 file:bg-charcoal-light file:px-3 file:py-1.5 file:text-xs file:text-offwhite-muted"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (file) void upload(file);
-              }}
-            />
-          </label>
-          <div className="flex flex-wrap gap-4">
-            <label className="flex items-center gap-2 text-sm text-offwhite-muted">
-              <input
-                type="checkbox"
-                checked={item.isAvailable !== false}
-                onChange={(event) => setItem({ ...item, isAvailable: event.target.checked })}
-                className="h-4 w-4 accent-terracotta"
-              />
-              Tersedia
-            </label>
-            <label className="flex items-center gap-2 text-sm text-offwhite-muted">
-              <input
-                type="checkbox"
-                checked={item.isFeatured === true}
-                onChange={(event) => setItem({ ...item, isFeatured: event.target.checked })}
-                className="h-4 w-4 accent-terracotta"
-              />
-              Unggulan
-            </label>
-          </div>
-          <button type="submit" disabled={busy} className={adminButtonClass}>
-            {busy ? "Menyimpan…" : "Simpan menu"}
-          </button>
-          {message && <p className="text-sm text-latte">{message}</p>}
-        </div>
-      </form>
+      {/* Modal Edit / Tambah Menu */}
+      {modal && (
+        <MenuFormModal
+          initial={modal.initial}
+          initialSort={modal.initialSort}
+          categories={categories}
+          editing={modal.editing}
+          busy={busy}
+          onClose={() => setModal(null)}
+          onSave={save}
+          onManageCategories={() => {
+            setCategoryModalOpen(true);
+          }}
+        />
+      )}
+
+      {/* Modal Kelola Kategori */}
+      {categoryModalOpen && (
+        <CategoryManagerModal
+          categories={categories}
+          records={rows}
+          busy={busy}
+          onClose={() => setCategoryModalOpen(false)}
+          onSaveCategories={handleSaveCategories}
+        />
+      )}
     </div>
   );
 }

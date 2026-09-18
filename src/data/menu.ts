@@ -4,7 +4,7 @@ export interface MenuCategoryMeta {
   id: MenuCategory;
   name: string;
   description: string;
-  icon: string;
+  icon?: string;
 }
 
 export const menuCategories: MenuCategoryMeta[] = [

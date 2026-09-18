@@ -3,7 +3,16 @@
  * Single source of truth across components, data, and utilities.
  */
 
-export type MenuCategory = "coffee" | "non-coffee" | "food" | "snack" | "dessert";
+export type StandardMenuCategory = "coffee" | "non-coffee" | "food" | "snack" | "dessert";
+export type MenuCategory = StandardMenuCategory | (string & {});
+
+export interface MenuCategoryMeta {
+  id: string;
+  name: string;
+  description: string;
+  icon?: string;
+  sort_order?: number;
+}
 
 export interface MenuItem {
   id: string;

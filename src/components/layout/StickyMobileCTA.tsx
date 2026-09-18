@@ -143,8 +143,8 @@ export function StickyMobileCTA() {
                       </span>
                     </div>
                     <div className="mt-1">
-                      {items.map((item) => (
-                        <MenuItemRow key={item.id} item={item} />
+                      {items.map((item, itemIndex) => (
+                        <MenuItemRow key={item.id} item={item} index={itemIndex} showImage={false} />
                       ))}
                     </div>
                   </section>

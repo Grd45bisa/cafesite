@@ -1,15 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { AdminBootstrap, AdminModule } from "@/types";
+import type { AdminBootstrap, AdminModule, Order } from "@/types";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { adminError, adminRequest, adminSecondaryClass } from "./admin-api";
 import AdminNotice from "./AdminNotice";
 import AdminManage from "./AdminManage";
 import MenuManager from "./MenuManager";
 import TableManager from "./tables/TableManager";
+import OrderManager from "./orders/OrderManager";
+import { useOrderSound } from "./orders/useOrderSound";
 
 interface ModuleMeta {
   id: AdminModule;
@@ -43,8 +45,16 @@ export default function AdminDashboard(): React.JSX.Element {
   const [active, setActive] = useState<AdminModule>("orders");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [pendingOrders, setPendingOrders] = useState(0);
+  const [newOrderPulse, setNewOrderPulse] = useState(false);
+  const waitingIds = useRef(new Set<string>());
+  const knownOrderIds = useRef(new Set<string>());
+  const latestOrderStatuses = useRef(new Map<string, string | null>());
+  const activeModule = useRef<AdminModule>("orders");
+  const { muted, toggleMuted, unlock, play } = useOrderSound();
   const client = getBrowserSupabase();
   const router = useRouter();
+  useEffect(() => { activeModule.current = active; }, [active]);
 
   const loadAccount = useCallback(
     async (): Promise<void> => {
@@ -98,6 +108,41 @@ export default function AdminDashboard(): React.JSX.Element {
       .subscribe();
     return () => { void client.removeChannel(channel); };
   }, [client, account, loadAccount]);
+
+  const canUseOrders = account?.profile.role === "admin" || account?.modules.some((module) => module.id === "orders" && module.enabled) === true;
+  useEffect(() => {
+    if (!client || !account || !canUseOrders) return;
+    waitingIds.current.clear();
+    knownOrderIds.current.clear();
+    latestOrderStatuses.current.clear();
+    let cancelled = false;
+    void client.from("orders").select("id,status").then(({ data }) => {
+      if (cancelled) return;
+      const statuses = new Map((data ?? []).map((order) => [order.id, order.status]));
+      latestOrderStatuses.current.forEach((status, id) => { if (status === null) statuses.delete(id); else statuses.set(id, status); });
+      waitingIds.current = new Set([...statuses].filter(([, status]) => status === "waiting").map(([id]) => id));
+      knownOrderIds.current = new Set([...knownOrderIds.current, ...(data ?? []).map((order) => order.id)]);
+      setPendingOrders(waitingIds.current.size);
+    });
+    const channel = client.channel("admin-order-counter").on<Order>("postgres_changes", { event: "*", schema: "public", table: "orders" }, (payload) => {
+      const id = String(payload.eventType === "DELETE" ? payload.old.id : payload.new.id);
+      if (payload.eventType === "INSERT" && payload.new.status === "waiting" && !knownOrderIds.current.has(id)) { if (activeModule.current !== "orders") setNewOrderPulse(true); play(); }
+      knownOrderIds.current.add(id);
+      latestOrderStatuses.current.set(id, payload.eventType === "DELETE" ? null : String(payload.new.status));
+      if (payload.eventType !== "DELETE" && payload.new.status === "waiting") waitingIds.current.add(id); else waitingIds.current.delete(id);
+      setPendingOrders(waitingIds.current.size);
+    }).subscribe();
+    return () => { cancelled = true; void client.removeChannel(channel); };
+  }, [account, canUseOrders, client, play]);
+
+  useEffect(() => {
+    const enableAudio = (): void => { void unlock(); };
+    window.addEventListener("pointerdown", enableAudio, { once: true });
+    window.addEventListener("keydown", enableAudio, { once: true });
+    return () => { window.removeEventListener("pointerdown", enableAudio); window.removeEventListener("keydown", enableAudio); };
+  }, [unlock]);
+
+  const canUseMenu = account?.profile.role === "admin" || account?.modules.some((module) => module.id === "menu" && module.enabled) === true;
 
   async function signOut(): Promise<void> {
     if (!client) return;
@@ -174,7 +219,7 @@ export default function AdminDashboard(): React.JSX.Element {
                       <button
                         key={item.id}
                         type="button"
-                        onClick={() => setActive(item.id)}
+                        onClick={() => { setActive(item.id); if (item.id === "orders") setNewOrderPulse(false); }}
                         aria-current={isSelected ? "page" : undefined}
                         className={`flex min-h-10 w-full shrink-0 items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition ${
                           isSelected
@@ -188,7 +233,15 @@ export default function AdminDashboard(): React.JSX.Element {
                             isSelected ? "opacity-100" : "opacity-0"
                           }`}
                         />
-                        {item.label}
+                        <span className="flex-1">{item.label}</span>
+                        {item.id === "orders" && pendingOrders > 0 && (
+                          <span
+                            aria-label={`${pendingOrders} pesanan menunggu`}
+                            className={`min-w-6 shrink-0 rounded-full bg-terracotta px-1.5 py-0.5 text-center text-[10px] font-semibold text-offwhite-pure ${newOrderPulse && selected?.id !== "orders" ? "animate-pulse" : ""}`}
+                          >
+                            {pendingOrders}
+                          </span>
+                        )}
                       </button>
                     );
                   })}
@@ -245,7 +298,17 @@ export default function AdminDashboard(): React.JSX.Element {
         </header>
 
         <AdminNotice message={error} error />
-        {selected && (selected.id === "menu" ? <MenuManager /> : selected.id === "tables" ? <TableManager /> : <AdminManage module={selected.id} />)}
+        {selected && (
+          selected.id === "menu" ? (
+            <MenuManager />
+          ) : selected.id === "orders" ? (
+            <OrderManager muted={muted} canManageMenu={canUseMenu} onToggleMuted={toggleMuted} />
+          ) : selected.id === "tables" ? (
+            <TableManager />
+          ) : (
+            <AdminManage module={selected.id} />
+          )
+        )}
       </main>
     </div>
   );

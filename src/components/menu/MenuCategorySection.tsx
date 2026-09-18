@@ -24,9 +24,10 @@ export function MenuCategorySection({
   const photoRight = index % 2 !== 0;
   const bgClass = isEven ? "bg-charcoal" : "bg-charcoal-darkest";
 
-  const midPoint = Math.ceil(items.length / 2);
-  const leftCol = items.slice(0, midPoint);
-  const rightCol = items.slice(midPoint);
+  const indexedItems = items.map((item, itemIndex) => ({ item, itemIndex }));
+  const midPoint = Math.ceil(indexedItems.length / 2);
+  const leftCol = indexedItems.slice(0, midPoint);
+  const rightCol = indexedItems.slice(midPoint);
 
   return (
     <section
@@ -66,13 +67,13 @@ export function MenuCategorySection({
             }`}
           >
             <div className="flex flex-col">
-              {leftCol.map((item) => (
-                <MenuItemRow key={item.id} item={item} />
+              {leftCol.map(({ item, itemIndex }) => (
+                <MenuItemRow key={item.id} item={item} index={itemIndex} />
               ))}
             </div>
             <div className="flex flex-col">
-              {rightCol.map((item) => (
-                <MenuItemRow key={item.id} item={item} />
+              {rightCol.map(({ item, itemIndex }) => (
+                <MenuItemRow key={item.id} item={item} index={itemIndex} />
               ))}
             </div>
           </div>

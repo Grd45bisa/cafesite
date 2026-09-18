@@ -182,6 +182,7 @@ Update status di setiap task seiring progress.
   - [x] Baca/simpan konten kafe, galeri, testimoni, FAQ, panduan lokasi, menu, meja, dan pengaturan modul lewat endpoint berotorisasi
   - [x] CRUD UI khusus menu: tambah, edit, hapus, kategori, harga, deskripsi, tag, unggulan, urutan, tersedia/habis, dan upload foto Supabase Storage
   - [x] CRUD UI khusus meja/QR (lantai, status, QR unduh/cetak, realtime patch lokal)
+  - [x] Kanban pesanan realtime, status/pembayaran, notifikasi suara, badge antrean, dan toggle cepat menu habis
   - [ ] Laporan agregat
 - [ ] Implementasikan UI operasional penuh tiap modul dashboard (antrian live, CRUD menu/konten, unggah gambar, denah drag-drop, cetak QR, laporan, pengaturan modul)
 - [ ] Hubungkan website publik ke data dashboard agar menu, galeri, lokasi, FAQ, dan testimoni langsung memakai database
