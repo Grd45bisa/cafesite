@@ -228,6 +228,17 @@ begin
  return to_jsonb(table_row);
 end $$;
 
+create or replace function public.delete_cafe_table(table_code text)
+returns void language plpgsql security definer set search_path=public
+as $$
+begin
+ perform pg_advisory_xact_lock(hashtextextended(table_code,1));
+ if exists(select 1 from public.orders where table_id=table_code and status in ('waiting','preparing','ready')) then
+  raise exception 'Meja memiliki pesanan aktif. Selesaikan pesanan terlebih dahulu.';
+ end if;
+ delete from public.cafe_tables where id=table_code;
+end $$;
+
 -- Explicitly revoke PostgreSQL's default PUBLIC execute on privileged functions.
 revoke all on function public.order_document(uuid) from public,anon,authenticated;
 revoke all on function public.insert_order_items(uuid,jsonb) from public,anon,authenticated;
@@ -235,7 +246,8 @@ revoke all on function public.create_cafe_order(uuid,uuid,text,text,text,text,js
 revoke all on function public.add_cafe_order_items(uuid,uuid,uuid,jsonb) from public,anon,authenticated;
 revoke all on function public.update_cafe_order(uuid,text,boolean) from public,anon,authenticated;
 revoke all on function public.save_cafe_table(text,uuid,text,numeric,numeric,text) from public,anon,authenticated;
-grant execute on function public.order_document(uuid),public.insert_order_items(uuid,jsonb),public.create_cafe_order(uuid,uuid,text,text,text,text,jsonb),public.add_cafe_order_items(uuid,uuid,uuid,jsonb),public.update_cafe_order(uuid,text,boolean),public.save_cafe_table(text,uuid,text,numeric,numeric,text) to service_role;
+revoke all on function public.delete_cafe_table(text) from public,anon,authenticated;
+grant execute on function public.order_document(uuid),public.insert_order_items(uuid,jsonb),public.create_cafe_order(uuid,uuid,text,text,text,text,jsonb),public.add_cafe_order_items(uuid,uuid,uuid,jsonb),public.update_cafe_order(uuid,text,boolean),public.save_cafe_table(text,uuid,text,numeric,numeric,text),public.delete_cafe_table(text) to service_role;
 
 -- Staff upload only raster assets. No SVG/HTML, random file names, no overwrites.
 insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)

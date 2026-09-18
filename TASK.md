@@ -181,7 +181,8 @@ Update status di setiap task seiring progress.
   - [x] Bootstrap login dashboard dan baca/update status antrian staff
   - [x] Baca/simpan konten kafe, galeri, testimoni, FAQ, panduan lokasi, menu, meja, dan pengaturan modul lewat endpoint berotorisasi
   - [x] CRUD UI khusus menu: tambah, edit, hapus, kategori, harga, deskripsi, tag, unggulan, urutan, tersedia/habis, dan upload foto Supabase Storage
-  - [ ] CRUD UI khusus meja/QR serta laporan agregat
+  - [x] CRUD UI khusus meja/QR (lantai, status, QR unduh/cetak, realtime patch lokal)
+  - [ ] Laporan agregat
 - [ ] Implementasikan UI operasional penuh tiap modul dashboard (antrian live, CRUD menu/konten, unggah gambar, denah drag-drop, cetak QR, laporan, pengaturan modul)
 - [ ] Hubungkan website publik ke data dashboard agar menu, galeri, lokasi, FAQ, dan testimoni langsung memakai database
 - [ ] Implementasikan seluruh Realtime operasional

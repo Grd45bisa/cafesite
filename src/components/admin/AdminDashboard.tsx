@@ -9,6 +9,7 @@ import { adminError, adminRequest, adminSecondaryClass } from "./admin-api";
 import AdminNotice from "./AdminNotice";
 import AdminManage from "./AdminManage";
 import MenuManager from "./MenuManager";
+import TableManager from "./tables/TableManager";
 
 interface ModuleMeta {
   id: AdminModule;
@@ -244,7 +245,7 @@ export default function AdminDashboard(): React.JSX.Element {
         </header>
 
         <AdminNotice message={error} error />
-        {selected && (selected.id === "menu" ? <MenuManager /> : <AdminManage module={selected.id} />)}
+        {selected && (selected.id === "menu" ? <MenuManager /> : selected.id === "tables" ? <TableManager /> : <AdminManage module={selected.id} />)}
       </main>
     </div>
   );

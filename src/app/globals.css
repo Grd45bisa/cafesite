@@ -88,3 +88,11 @@ body {
   background-color: var(--color-terracotta);
   color: var(--color-offwhite-pure);
 }
+
+@media print {
+  body * { visibility: hidden !important; }
+  .qr-print-section, .qr-print-section * { visibility: visible !important; }
+  .qr-print-section { position: absolute !important; inset: 0 !important; display: grid !important; width: 100% !important; background: white !important; color: black !important; }
+  .qr-print-card { break-inside: avoid; page-break-inside: avoid; }
+  @page { margin: 12mm; }
+}

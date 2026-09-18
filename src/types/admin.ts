@@ -8,6 +8,8 @@ export interface AdminBootstrap { profile: AdminProfile; modules: AdminModuleSet
 export interface AdminMenuRecord { id: string; data: MenuItem; is_available: boolean; sort_order: number; }
 export interface AdminFloor { id: string; name: string; sort_order: number; }
 export interface AdminTable { id: string; floor_id: string; label: string; x: number; y: number; status: "available" | "occupied" | "dirty"; }
+export interface AdminFloorForm { id?: string; name: string; sortOrder: number; }
+export interface AdminTableForm { id: string; floorId: string; label: string; status: AdminTable["status"]; }
 export interface AdminFieldProps { label: string; children: ReactNode; hint?: string; }
 export interface AdminNoticeProps { message: string; error?: boolean; }
 export interface AdminContentProps { resource: "gallery" | "testimonials" | "faq" | "location"; }
