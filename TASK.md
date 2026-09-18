@@ -195,10 +195,10 @@ Update status di setiap task seiring progress.
 ## Tugas Terbaru — Draft (masih dipikirkan)
 
 ### WA Bot — Plan (+ Prompt per Phase) di `WA_BOT_PLAN.md`
-> Bot WhatsApp (wa-webjs) di folder `server/` terpisah dari Next.js. AI memakai Nemotron 3.5 Lightning via OpenRouter ($0.08/M input; free var: Nano Omni). RAG di Supabase + pgvector. Order dev pakai keyword `bayar` (payment gateway iPaymu ditunda, lihat `ipaymu.md`).
-> - [x] Riset model Nemotron (Lightning/Nano Omni/Ultra) + harga & model ID OpenRouter
-> - [x] Tulis rencana sampai "fix" + prompt per phase (P1 laying → P2 AI hub → P3 RAG → P4 order → P5 ops) di `WA_BOT_PLAN.md`
-> - [ ] P1: eksekusi prompt Phase 1 (folder `server/` + wa-webjs login/QR/reconnect)
+> Bot WhatsApp (wa-webjs) di folder `server/` terpisah dari Next.js. AI memakai Nemotron 3.5 Lightning via **NVIDIA API langsung** (`integrate.api.nvidia.com`, model `nvidia/nemotron-3.5-lightning-30b-a3b`, env `NVIDIA_API_KEY`/`NVIDIA_MODEL`). RAG di Supabase + pgvector. Order dev pakai keyword `bayar` (payment gateway iPaymu ditunda, lihat `ipaymu.md`).
+> - [x] Riset model Nemotron (Lightning/Nano Omni/Ultra) + harga & model ID
+> - [x] Implementasi Phase 1 (folder `server/` + wa-webjs login/QR/reconnect) & Phase 2 (AI Hub Nemotron via NVIDIA API + guard topik) — build 0 error
+> - [x] Implementasi Phase 3 (RAG: `server/src/rag/` + SQL `supabase/04_rag_documents.sql`, embedding NVIDIA `nv-embedqa-e5-v5`, CLI `rag:ingest`) — build 0 error
 
 ## Tugas Terbaru — Draft (masih dipikirkan)
 

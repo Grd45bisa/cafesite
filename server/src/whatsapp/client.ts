@@ -14,6 +14,7 @@ type MessageHandler = (message: Message) => Promise<void> | void;
 interface BotClient {
   client: Client;
   start: () => Promise<void>;
+  cancelReconnect: () => void;
 }
 
 function backoffDelay(attempt: number): number {
@@ -41,6 +42,7 @@ function createWhatsAppClient(env: BotEnv): Client {
 export function createBotClient(env: BotEnv, onMessage: MessageHandler): BotClient {
   let reconnectAttempts = 0;
   let reconnectTimer: NodeJS.Timeout | null = null;
+  let authFailed = false;
 
   const client = createWhatsAppClient(env);
 
@@ -52,6 +54,11 @@ export function createBotClient(env: BotEnv, onMessage: MessageHandler): BotClie
   }
 
   function scheduleReconnect(reason: string): void {
+    if (authFailed) {
+      logger.warn("Reconnect dilewati karena autentikasi gagal - butuh scan ulang QR secara manual.", { reason });
+      return;
+    }
+
     if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
       logger.error("Batas percobaan reconnect tercapai. Bot berhenti mencoba ulang otomatis.", {
         reason,
@@ -90,13 +97,21 @@ export function createBotClient(env: BotEnv, onMessage: MessageHandler): BotClie
   });
 
   client.on("auth_failure", (message: string) => {
-    logger.error("Autentikasi gagal.", { message });
+    // Session lokal korup/logout dari HP - reconnect otomatis TIDAK akan
+    // menyelesaikan ini (QR baru wajib di-scan ulang secara manual). Set
+    // flag `authFailed` supaya event "disconnected" yang biasanya menyusul
+    // auth_failure TIDAK ikut memicu scheduleReconnect - tanpa flag ini,
+    // "disconnected" akan bypass keputusan berhenti di sini.
+    authFailed = true;
+    clearReconnectTimer();
+    logger.error("Autentikasi gagal - perlu scan ulang QR. Bot berhenti, tidak mencoba reconnect otomatis.", { message });
   });
 
   client.on("ready", () => {
+    authFailed = false;
     reconnectAttempts = 0;
     clearReconnectTimer();
-    logger.info("Bot WhatsApp siap dan tersambung.", { phone: env.waBotPhone });
+    logger.info("Bot WhatsApp siap dan tersambung.", { phone: env.waBotPhone, processUptimeSeconds: Math.round(process.uptime()) });
   });
 
   client.on("disconnected", (reason: string) => {
@@ -113,7 +128,9 @@ export function createBotClient(env: BotEnv, onMessage: MessageHandler): BotClie
   });
 
   async function start(): Promise<void> {
-    logger.info("Menginisialisasi client WhatsApp...");
+    logger.info(
+      "Menginisialisasi client WhatsApp... (kalau proses sebelumnya mati mendadak tanpa shutdown bersih, Chromium lama mungkin masih mengunci folder session - lihat server/DEPLOY.md bagian troubleshooting kalau initialize gagal dengan error 'already running')",
+    );
     try {
       await client.initialize();
     } catch (error: unknown) {
@@ -124,5 +141,5 @@ export function createBotClient(env: BotEnv, onMessage: MessageHandler): BotClie
     }
   }
 
-  return { client, start };
+  return { client, start, cancelReconnect: clearReconnectTimer };
 }

@@ -1,8 +1,8 @@
 # WA_BOT_PLAN.md — Plan Bot WhatsApp CafeSite (wa-webjs + Nemotron + RAG)
 
-> Dokumen ini berisi **rencana kerja sampai bot stabil/"fix"** dan **prompt per phase** yang siap di-paste ke AI coding agent. Bot jalan di folder `server/` (project Node.js + TypeScript terpisah, BUKAN di dalam Next.js). AI milik bot memakai **NVIDIA Nemotron** via API OpenRouter.
+> Dokumen ini berisi **rencana kerja sampai bot stabil/"fix"** dan **prompt per phase** yang siap di-paste ke AI coding agent. Bot jalan di folder `server/` (project Node.js + TypeScript terpisah, BUKAN di dalam Next.js). AI milik bot memakai **NVIDIA Nemotron** via **NVIDIA API langsung** (`integrate.api.nvidia.com`), bukan OpenRouter.
 >
-> Status: `Draft` — belum ada kode di folder `server/`.
+> Status: **Phase 1 & 2 sudah berjalan di `server/`** (AI Hub + guard, build 0 error). Phase 3–5 menyusul.
 
 ---
 
@@ -18,7 +18,7 @@ Gambar kerja (dev):
   ┌───────────────── server/ (VPS 24/7) ─────────────────┐
   │  wa-webjs (session WhatsApp, jalan terus)            │
   │    │                                                 │
-  │    ├─ AI call → OpenRouter → nvidia/nemotron-3.5-lightning
+  │    ├─ AI call → NVIDIA API (integrate.api.nvidia.com) → nvidia/nemotron-3.5-lightning-30b-a3b
   │    ├─ RAG: cari context → kirim ke AI → jawab
   │    ├─ Order flow (dev: keyword "bayar") → insert ke tabel orders
   │    ▼
@@ -27,7 +27,7 @@ Gambar kerja (dev):
    Dashboard /admin (Next.js yang sudah ada) — pesanan WA masuk di sini (Realtime)
 ```
 
-- **AI (Nemotron) TIDAK pernah dijalankan lokal di VPS.** VPS hanya memanggil API OpenRouter.
+- **AI (Nemotron) TIDAK pernah dijalankan lokal di VPS.** VPS hanya memanggil NVIDIA API (`https://integrate.api.nvidia.com/v1/chat/completions`, OpenAI-compatible, header `Authorization: Bearer $NVIDIA_API_KEY`).
 - **Supabase dipakai untuk** vektor RAG + metadata + storage PDF + tabel `orders` (agar order WA tampil di dashboard yang sudah ada).
 - **Order via WA belum pakai payment gateway.** Dev = customer cukup ketik `bayar` (placeholder). Integrasi iPaymu QRIS dijadwalkan setelah fase ini, merujuk `ipaymu.md`.
 
@@ -52,7 +52,7 @@ Gambar kerja (dev):
 | Fase | Target "fix" (kriteria selesai) | Isi |
 |---|---|---|
 | **P1 — Laying** | Bot WhatsApp hidup & bisa balas pesan | Folde `server/`, wa-webjs + session, hello/ping, auto-reconnect, QR login |
-| **P2 — AI Hub** | Bot bisa jawab pertanyaan cafe pakai Nemotron | Call OpenRouter, system prompt + topic guard, fallback SOP |
+| **P2 — AI Hub** | Bot bisa jawab pertanyaan cafe pakai Nemotron | Call NVIDIA API, system prompt + topic guard, fallback SOP |
 | **P3 — RAG** | RAG jalan: PDF upload → chunk → embed → simpan → retrieve | Pipeline ingest (script), similarity search, context ke AI, cleanup |
 | **P4 — Order** | Order via WA masuk dashboard pakai kata `bayar` | Ambil item dari tabel `menu_items`, hitung total, alur konfirmasi, insert ke `orders` (service role), badge ke dashboard |
 | **P5 — Ops** | Stabil jalan 24/7 di VPS | PM2/systemd, log, restart otomatis, rate-limit anti-spam, monitoring |
@@ -66,7 +66,7 @@ Gambar kerja (dev):
 - **`payment_method` di tabel `orders` hanya menerima `'cod'`** (constraint di schema). Untuk dev, bot insert dengan `payment_method='cod'` `payment_status='paid' simulasikan` via fungsi `update_cafe_order(mark_paid=true)` — atau diskusikan alter constraint per kebutuhan. Jangan ubah schema di luar kebutuhan.
 - **Menu dibaca dari tabel `menu_items` Supabase** (bukan dari `data/menu.ts`), agar selaras dengan dashboard (termasuk `is_available` = habis).
 - **wa-webjs tidak 100% stabil** dan rawan diblokir jika dipakai massal; batasi ke kebutuhan cafe (starter).
-- **Embedding untuk RAG** masih open decision: pantau biaya. Rekomendasi awal: kubedr `pgvector` + embedding hubung key yang murah/embed model gratis OpenAI (`text-embedding-3-small`) — konfigurasi via env, bukan hardcode.
+- **Embedding untuk RAG** masih open decision: pantau biaya. Rekomendasi awal: pakai `pgvector` + embedding yang diset via env (bukan hardcode). Karena stack AI sudah di **NVIDIA API**, cek dulu di `build.nvidia.com` apakah ada model embedding NVIDIA yang gratis/murah — baru pilih; jangan otomatis pakai OpenAI `text-embedding-3-small` tanpa membandingkan.
 
 ---
 
@@ -88,7 +88,7 @@ Tugasmu: buat fondasi bot WhatsApp di folder `server/` di repo CafeSite ini (Win
    - Balas pesan kosong/ping dengan "✓ Bot CafeSite aktif".
 3. Struktur:
    server/
-     .env.example   (lengkapi: OPENROUTER_API_KEY, OPENROUTER_MODEL, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, WA_BOT_PHONE) — belum dipakai phase ini, siapkan saja
+     .env.example   (lengkapi: NVIDIA_API_KEY, NVIDIA_MODEL, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, WA_BOT_PHONE) — belum dipakai phase ini, siapkan saja
      .gitignore     (node_modules, .env, session)
      package.json   (script: "dev": "tsx watch src/index.ts", "start": "node dist/index.js")
      tsconfig.json
@@ -111,20 +111,28 @@ Tugasmu: buat fondasi bot WhatsApp di folder `server/` di repo CafeSite ini (Win
 ### PHASE 2 — Prompt: AI Hub (Nemotron + guard)
 
 ```
-Tugasmu: tambahkan "otak AI" ke bot WhatsApp di `server/` (lanjutkan dari Phase 1). AI memakai model NVIDIA Nemotron yang diakses VIA API OpenRouter — JANGAN pernah menjalankan model lokal.
+Tugasmu: tambahkan "otak AI" ke bot WhatsApp di `server/` (lanjutkan dari Phase 1). AI memakai model NVIDIA Nemotron yang diakses VIA NVIDIA API langsung — JANGAN pernah menjalankan model lokal.
 
 ## Model (wajib sesuai)
-- Production: `nvidia/nemotron-3.5-lightning` (NVIDIA Nemotron 3.5 Lightning 30B A3B) via OpenRouter, endpoint OpenAI-compatible: https://openrouter.ai/api/v1/chat/completions
-- Alternatif gratis untuk testing (pakai env `OPENROUTER_MODEL`): `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free`
-- Header auth: `Authorization: Bearer $OPENROUTER_API_KEY`, tambah `HTTP-Referer` dan `X-Title` (identitas app: "CafeSite WhatsApp Bot").
+- Production: `nvidia/nemotron-3.5-lightning-30b-a3b` (NVIDIA Nemotron 3.5 Lightning 30B) via NVIDIA API (bukan OpenRouter). Endpoint OpenAI-compatible: https://integrate.api.nvidia.com/v1/chat/completions
+- Key: format `nvapi-...`, didapat dari build.nvidia.com → env `NVIDIA_API_KEY`; model ID dari env `NVIDIA_MODEL`.
+- Header auth: `Authorization: Bearer <NVIDIA_API_KEY>`. TIDAK ada header `HTTP-Referer`/`X-Title` (itu khusus OpenRouter, tidak dipakai di NVIDIA API).
+- Body: format messages OpenAI-compatible (`role`/`content`), **non-streaming (`stream: false`)** — bot WhatsApp butuh teks lengkap sekaligus, bukan potongan per-chunk.
+- Panggil pakai `fetch` native Node.js. JANGAN pakai SDK `openai` (tanpa dependency tambahan).
+- Alternatif hemat kuota untuk testing: cek dulu di build.nvidia.com apakah ada model setara yang gratis/murah — jangan asumsi pakai ID model OpenRouter yang lama (`...-reasoning:free`); ID OpenRouter ≠ ID NVIDIA API.
 
 ## Apa yang dibuat
-1. `src/ai/nemotronClient.ts` — fungsi `askAI(messages)` panggil OpenRouter, handle error/timeout/retry 1x, return text.
+1. `src/ai/nemotronClient.ts` — fungsi `askAI(config, messages)` panggil NVIDIA API, handle error/timeout (AbortController)/retry 1x, return text. Config dari `getNemotronConfig(env)` di `env.ts` (validasi lazy, bukan saat startup).
 2. `src/ai/systemPrompt.ts` — Ekspor SYSTEM_PROMPT (lihat isi wajib di bawah).
 3. `src/ai/guard.ts` — fungsi penjaga topik PRA-AI:
    - Daftar kata kunci cafe (menu, harga, jam buka, lokasi, meja, resepsi, kepada dll).
    - Jika pesan user tidak menyangkut cafe → BALAS segera dengan SOP tanpa panggil AI (mis. "Maaf, saya hanya bisa bantu soal CafeSite ☕").
-4. `src/ai/chatHandler.ts` — dipanggil dari WA: guard → (nanti: retrieve RAG) → build messages → `askAI` → kirim balik. Fase ini RAG belum ada, langsung panggil AI dengan prompt + system prompt.
+4. `src/ai/types.ts` — tipe `ChatMessage` = `{ role: "system" | "user" | "assistant"; content: string }`.
+5. `src/ai/chatHandler.ts` — dipanggil dari WA: guard → (nanti: retrieve RAG) → build messages → `askAI` → kirim balik. Fase ini RAG belum ada, langsung panggil AI dengan prompt + system prompt. Terima input primitif (bukan objek wa-webjs) agar mudah diuji.
+6. Integrasi ke bot WhatsApp (`src/whatsapp/client.ts` / handler pesan):
+   - SEMUA pesan teks user (skip status@broadcast & `message.fromMe`) → `handleChat`.
+   - Kirim "sedang mengetik..." (`message.startTyping()`) sebelum panggil AI, stop setelah selesai.
+   - Error dari AI → balas ramah ("Sebentar ya, saya lagi gangguan koneksi. Coba lagi."), jangan crash.
 
 ## SYSTEM_PROMPT (isi minimal, boleh diperluas):
 Kamu adalah asisten WhatsApp resmi CafeSite. Tugasmu HANYA menjawab pertanyaan seputar CafeSite berdasarkan informasi yang diberikan. ATURAN: (1) Hanya bicara tentang CafeSite: menu & harga, jam buka, lokasi, ketersediaan meja, dan info yang ada di konteks. (2) JANGAN pernah: memberi pendapat pribadi, menceritakan informasi pribadi pemilik/karyawan, membocorkan data orang lain, atau menjawab topik di luar cafe. (3) Jika tidak yakin atau di luar topik, katakan: "Maaf, saya hanya bisa membantu soal CafeSite ☕ Tanya seputar menu, jam buka, atau lokasi ya." (4) Jawab singkat, ramah, bahasa Indonesia santai.
@@ -167,13 +175,14 @@ Tugasmu: tambahkan RAG (Retrieval-Augmented Generation) ke bot `server/`. Dokume
 1. `src/rag/ingest.ts` — script CLI `npm run rag:ingest <path.pdf>`:
    - Parse PDF (pakai library ringan, mis. `pdf-parse`).
    - Chunking by heading/paragraf (~600-800 char, overlap kecil).
-   - Embed tiap chunk (embedding model dari env `EMBEDDING_MODEL`, default `text-embedding-3-small` via API provider dari env `EMBEDDING_API_KEY`/`EMBEDDING_BASE_URL`).
+   - Embed tiap chunk (embedding model dari env `EMBEDDING_MODEL`, `EMBEDDING_API_KEY`, `EMBEDDING_BASE_URL`). Karena AI lain sudah di ecosystem NVIDIA, CEK DULU di build.nvidia.com apakah ada model embedding NVIDIA yang gratis/murah sebelum memilih — jangan otomatis pakai OpenAI `text-embedding-3-small`.
    - Hapus chunk lama dari `source` yang sama, lalu insert chunk baru (bisa "ganti-ganti" isi RAG dengan meng-upload ulang).
 2. `src/rag/retrieve.ts` — `retrieve(query, limit=5)`:
    - Embed query → query similarity di `rag_documents` (`<=>`) → return `content` list.
 3. `src/ai/chatHandler.ts` — UPDATE:
    - Pertama retrieve top-5 chunk relevan → sertakan sebagai konteks di pesan AI.
    - Tetap lewati guard dulu seperti Phase 2.
+   - JANGAN ubah kontrak pemanggilan AI yang sudah ada (`askAI(config, messages)` → NVIDIA API, non-streaming, fetch native). Kalau perlu context tambahan, cukup tambahkan konten RAG ke array `messages` sebagai pesan `system`/`user` konteks.
 4. `.env.example` tambah: `EMBEDDING_MODEL`, `EMBEDDING_API_KEY`, `EMBEDDING_BASE_URL`.
 
 ## Verifikasi
@@ -187,28 +196,52 @@ Tugasmu: tambahkan RAG (Retrieval-Augmented Generation) ke bot `server/`. Dokume
 ### PHASE 4 — Prompt: Order via WhatsApp (dev: kata "bayar")
 
 ```
-Tugasmu: tambahkan alur PEMESANAN via WhatsApp di `server/`. BELUM ada payment gateway: dev = customer cukup ketik "bayar" dan pesanan masuk dashboard /admin sebagai PAID.
+Tugasmu: tambahkan alur PEMESANAN via WhatsApp di `server/` (lanjutan Fase 2 AI + Fase 3 RAG). BELUM ada payment gateway: dev = customer cukup ketik "bayar" lalu pesanan masuk dashboard /admin sebagai PAID. Sumber harga DAN ketersediaan menu WAJIB dari database, jangan hardcode.
 
-## Sumber data & constraints (WAJIB baca)
-- Baca `supabase/01_schema.sql`. Tabel `orders` butuh `user_id uuid references auth.users` — WhatsApp bukan user Supabase, jadi:
-  - Buat 1 akun bot di Supabase Auth (lewat dashboard) → catat `user_id`-nya → taruh di env `WA_BOT_USER_ID`.
-  - Semua tulis order dilakukan dengan `service_role` key (dari `server/.env`), memenuhi RLS.
-- Menu dibaca dari tabel `menu_items` (jangan hardcode). Hormati `is_available`.
+## Sumber data & constraints (WAJIB baca dulu)
+- Baca `supabase/01_schema.sql` utuh. Poin yang menentukan desain order:
+  - `orders.user_id` NOT NULL references `auth.users` → WhatsApp bukan user Supabase. Buat **1 akun bot** di Supabase Auth (dashboard, email/password) → catat `user_id` → taruh di env `WA_BOT_USER_ID`. Pakai sebagai `actor` di semua RPC create/update.
+  - `orders.idempotency_key uuid` + `unique(user_id,idempotency_key)` → setiap sesi keranjang generate 1 UUID, dipakai ulang saat retry.
+  - Semua tulis order lewat **RPC security definer** (GRANT-nya hanya ke `service_role`): `create_cafe_order(actor, request_key, customer, customer_phone, fulfillment_value, table_code, line_items)` dan `update_cafe_order(order_uuid, next_status, mark_paid)`. JANGAN insert ke tabel `orders`/`order_items` langsung.
+  - `create_cafe_order` sudah menghitung total dari harga saat ini, memvalidasi `is_available`, meja `available`, format qty/notes, dan maks 5 pesanan/10 menit/aktor. `line_items` = array `{menuItemId, quantity, notes}`.
+  - `payment_method` hanya menerima `'cod'` → JANGAN alter schema, bayar-nya cukup `update_cafe_order(order_uuid, mark_paid=true)` yang berisi `payment_status='paid'`.
+  - `queue_number` dibuat otomatis (sequence `order_queue_seq`, grant service_role).
+  - `orders.phone` regex `^[0-9]{8,15}$`, `customer_name` 2–80 char → validasi di sisi bot sebelum panggil RPC.
+- Menu dibaca dari view langsung `public.menu_items` (pilih `id`, `data->>'name'` as name, `data->>'price'` as price, `is_available`, `data->>'category'`). Client: `src/supabase/client.ts` (`createServiceRoleClient`) + `src/config/env.ts` (`getSupabaseConfig`) yang sudah ada dari Fase 3.
+- Session keranjang: **in-memory Map keyed `message.from`** (tidak perlu DB). Timeout sesi ~10 menit; keyword `batal`/`cancel` mereset sesi ke langkah awal.
 
-## Alur yang diimplementasikan (lanjutkan dari fase 2–3)
-1. Intent order ketika user mengetik kata kunci: "pesan", "order", "beli", "mau pesan".
-2. Bot tanya: nama item (cari di menu_items), qty, opsi dine-in/takeaway (+ meja jika dine-in), lalu nama + nomor HP customer untuk pengisian `orders.customer_name/phone`.
-3. Bot konfirmasi ringkasan: item, qty, total (hitung dari harga menu_items), fulfillment.
-4. Setelah konfirmasi, bot bilang: "Silakan lanjutkan dengan mengetik `bayar` untuk memproses pesanan (mode development)."
-   Setelah user ketik `bayar`: transaksi dibuat (insert order_items dari menu current price) dan langsung tandai PAID (mis. insert via fungsi membuat pesanan + `update_cafe_order(mark_paid=true)` atau pola lain yang aman, konsisten dengan schema). Kirim balik: nomor antrian/queue_number + total.
-5. Semua error validasi (meja tidak tersedia, menu habis, format salah) → balas pesan ramah, jangan crash.
+## Alur implementasi
+Kalau user mengetik intent order ("pesan", "order", "beli", "mau pesan", dst., case-insensitive) → MASUK ke order flow, selainnya tetap `handleChat` (Fase 2–3 tidak berubah). Urutan dialog:
+
+1. Bot sapa + tanya mau pesan apa. User jawab item bebas format menambah ke keranjang, mis: `2 americano`, `1 es kopi susu + 1 nasi goreng`, `kopi susu 1, teh 2`. Parsing: cari item di `menu_items` berdasarkan nama (lowercase, contains/fallback like). Hasil unik → masukkan keranjang. Banyak kecocokan → balas daftar kandidat + minta user pilih. Item habis (`is_available=false`) → tolak ramah. Qty default 1; validasi 1–20.
+2. Setelah ada item (atau user ketik `selesai`/`jadi`): tanya **dine-in / takeaway** (`dine in`/`take away`/`bawa pulang`). Jika dine-in → tanya nomor meja; tampilkan daftar meja `available` dari `cafe_tables` (label + floor). Kalau tidak ada meja kosong → saran takeaway.
+3. Tanya **nama** → validasi 2–80 char. Tanya **nomor HP** → validasi `[0-9]{8,15}`.
+4. Bot konfirmasi ringkasan: item + qty + total (jumlahkan dari price saat ini DI SISI BOT untuk display; nilai akhir tetap hasil RPC), fulfillment (+ meja), nama, HP. Lalu: "Untuk memproses pesanan, ketik `bayar` (mode development)." Ketik `bayar` →:
+   - Generate `idempotency_key` (uuid, 1 per sesi) → `create_cafe_order(WA_BOT_USER_ID, key, nama, hp, fulfillment, table_code, line_items)`.
+   - Lalu `update_cafe_order(order_uuid, null, true)` → tandai PAID.
+   - Balas: nomor antrian (`queue_number`), total, ringkasan. Kosongkan keranjang untuk user.
+5. Semua error validasi (menu habis, meja tidak tersedia, format salah, error RPC mis. "Terlalu banyak pesanan"/"Meja tidak tersedia") → balas pesan ramah, kembalikan user ke langkah yang relevan, JANGAN crash dan JANGAN buat order parsial.
+6. Idempotensi: kalau RPC panggilan ulang (network/timeout setelah insert) dengan `request_key` yang sama di-create ulang, `create_cafe_order` mengembalikan pesanan yang sama → balas ringkasan itu, tidak buat duplikat.
+
+## File
+- Buat `server/src/order/orderFlow.ts` (state machine + parsing + render balasan) dan `server/src/order/intent.ts` (deteksi intent order vs pertanyaan biasa). Pisahkan dari `src/ai/chatHandler.ts`.
+- `src/index.ts`: sebelum `handleChat`, cek intent order → jalankan `orderFlow`. Tetap auto-reply "pong" untuk "ping" dan kontrak `askAI` TIDAK diubah.
+- `src/config/env.ts`: `WA_BOT_USER_ID` sudah ada; untuk order gunakan `getSupabaseConfig` yang ada. Tambahkan fungsi `getBotUserId(env)` yang me-throw error jelas kalau belum diisi (ikuti pola lazy validation, jangan fail-fast saat startup).
+- `server/package.json`: jangan tambah dependency baru kecuali benar-benar perlu (state machine cukup if/else, tidak perlu library).
 
 ## Pengujian
-- Pesan "order" → seluruh alur berjalan sampai "bayar" → cek dashboard `/admin` (kanban Pesanan) bahwa pesanan WA muncul sebagai paid.
-- Menu habis (toggle `is_available=false`) → bot menolak item tersebut.
+- Chat "pesan" → seluruh alur sampai "bayar" → cek dashboard `/admin` (kanban Pesanan): pesanan muncul dengan status **paid**, queue_number terisi, item & total benar.
+- Toggle `is_available=false` untuk satu item → bot menolak item tersebut saat ditambahkan.
+- Dine-in dengan meja yang sedang `occupied`/`dirty` → bot tolak + saran takeaway.
+- Kirim ulang `bayar` (retry) → tidak membuat duplikat pesanan (idempotency key).
+- Pesan di luar topik (mis. "nanya PR matematika") → tetap dijawab `handleChat`/guard seperti biasa, tetap lewat jalur AI.
+
+## Verifikasi build
+`npm run build` di `server/` → 0 error sebelum dianggap selesai.
 
 ## Catatan
-- `payment_method` pada tabel orders hanya menerima `'cod'`. Untuk dev, gunakan nilai yang valid `'cod'` (pa-in, diganti gateway di fase FUTURE). Kalau butuh enumerasi baru, JELASKAN dulu ke user sebelum alter schema.
+- `payment_method` tetap `'cod'` (dev). Penggantian ke iPaymu QRIS murni fase FUTURE (`ipaymu.md`), TIDAK diimplementasikan sekarang.
+- Jangan tulis data order kecuali lewat RPC di atas; jangan pakai anon key dari server.
 ```
 
 ---
@@ -216,24 +249,61 @@ Tugasmu: tambahkan alur PEMESANAN via WhatsApp di `server/`. BELUM ada payment g
 ### PHASE 5 — Prompt: Ops / Produksi (stabil 24/7 di VPS)
 
 ```
-Tugasmu: polish bot `server/` agar stabil jalan 24/7 di VPS (target Oracle Cloud Always Free Ubuntu).
+Tugasmu: polish bot `server/` agar stabil jalan 24/7 di VPS (target Oracle Cloud Always Free Ubuntu). Fokus: anti-spam, reconnect yang benar, shutdown bersih, logging, dan deploy PM2 yang idempotent setelah reboot.
 
-## Yang dikerjakan
-1. `src/config/env.ts` — pastikan semua env divalidasi saat start (fail fast).
-2. Rate-limit anti-spam: maks N pesan per user per menit (buat file `src/queue/rateLimit.ts`), melebihi → bot diam/respon pelan.
-3. Reconnect strategy yang solid: listener `auth_failure`, `disconnected`, `ready`; backoff; log jelas.
-4. Logging: `src/whatsapp/logger.ts` minimal console json (timestamp, level, source).
-5. Tulis `server/DEPLOY.md` berisi langkah:
-   - git clone ke VPS, `npm ci`, build `tsc`, jalankan via **PM2** (`ecosystem.config.js`) dengan restart on crash + `max_memory_restart`.
-   - Hint: session mobile (QR) bisa dipakai di PM2 asal folder session dibackup.
-   - Set env di `.env` (jangan commit).
-   - fire & forget: start script `pm2 start ecosystem.config.js`.
-6. Health check sederhana: pesan "ping" → pong (sudah ada), tambah log uptime di start.
+## Kondisi kode SEKARANG (baca dulu, jangan asumsi)
+- `src/whatsapp/client.ts` SUDAH punya: listener `qr`, `authenticated`, `auth_failure`, `ready`, `disconnected`, `message`, dan reconnect backoff 8x (5s → 5 menit, reset di `ready`). PERTAHANKAN struktur ini, jangan rombak dari nol.
+- `src/whatsapp/logger.ts` SUDAH console log berformat `[ISO] [LEVEL] pesan {meta}`. Jangan ganti ke library logging baru.
+- `src/index.ts` BELUM punya handler `ping` → `pong` (draft plan lama menuliskannya "sudah ada", tapi faktanya belum) — ini kerjaan nyata.
+- `src/config/env.ts`: `loadEnv()` baca semua env saat start, tapi masing-masing config divalidasi LAZY (`getNemotronConfig`, `getEmbeddingConfig`, `getSupabaseConfig`) supaya bot tetap bisa jalan meski key belum diisi. JANGAN ubah ke fail-fast penuh — ini keputusan desain disengaja.
+- Bot SKIP pesan: `status@broadcast`, `fromMe`, `isStatus`, grup, dan body kosong (di `index.ts`). Rate-limit hanya relevan untuk chat personal.
 
-## Verifikasi
-- Simulasi disconnect (nonaktifkan internet laptop) → bot reconnect sendiri.
-- Spam > N pesan → bot menahan balasan.
-- Deploy ke VPS → bot online, idempotent after reboot (PM2 + `pm2 startup`).
+## Yang dikerjakan (lanjutkan pola file yang ada)
+1. **Rate-limit anti-spam** — buat `src/queue/rateLimit.ts`:
+   - Sliding window in-memory per user (`message.from`): maks `RATE_LIMIT_MAX_PER_MINUTE` pesan per `RATE_LIMIT_WINDOW_MS`.
+   - Export `checkRateLimit(from): { allowed: boolean; waitMs: number }`.
+   - Ditimpa batas → bot DIAM (jangan balas apa-apa; pas bandwith ke pelanggan, bukan rate-limit yang meng-install hukuman publik) — tapi log di logger. Dokumentasikan. Kalau dianggap terlalu agresif, bisa juga balas pesan pelan (delay) — pilih yang lebih sederhana, tulis di comment.
+   - Pasang di `index.ts` PALING ATAS `handleIncomingMessage`, sebelum routing order/AI.
+   - Tambah env optional `RATE_LIMIT_MAX_PER_MINUTE` (default 5) & `RATE_LIMIT_WINDOW_MS` (default 60_000) di `loadEnv()` (optional, bukan readRequired).
+
+2. **Reconnect strategy — perbaiki yang sudah ada, jangan buat ulang** (`src/whatsapp/client.ts`):
+   - `auth_failure` (mis. database session korup / logout) JANGAN auto-reconnect loop. Log jelas "Perlu scan ulang QR" + STOP. Di task pelaksana bisa flag bahwa `auth_failure` menandakan sesi tidak valid.
+   - Tambah graceful shutdown: di `index.ts` (atau file baru `src/whatsapp/shutdown.ts`) pasang `process.on("SIGINT"|"SIGTERM")` → `client.destroy()`, bersihkan reconnect timer, log "shutdown bersih", `process.exit(0)`.
+   - **Bug orphan Chromium** (diketahui): kalau bot mati mendadak, proses chrome lama masih memegang `server/session/` → error startup "The browser is already running for ...\session". Solusi yang disukai: graceful shutdown di atas menutup browser dengan benar; tambahan, sebelum `initialize()` saat start, beri log yang jelas kalau `destroy()` tidak sempat dijalankan (deteksi bisa lewat error). JANGAN menambah library baru untuk ini.
+   - Pertahankan backoff 8x max 5 menit & reset di `ready`.
+
+3. **Logging** (`src/whatsapp/logger.ts`):
+   - Tambahkan env optional `LOG_LEVEL` (info/warn/error, default info) → `warn`/`error` difilter di bawah level.
+   - JANGAN log `body` pesan yang mengandung data pribadi di level info (nomor/email) — cukup `from` (hash) + karakter pertama/panjang. Sudah ada `body` di `index.ts` log pesan masuk — sanitasi atau anonimkan.
+   - Jika memungkinkan, `meta` tiap baris sudah punya `timestamp` di prefix — tidak perlu diulang di meta.
+
+4. **Health check** (`src/index.ts`):
+   - Tambah handler "ping" → "pong" (case-insensitive, tanpa variasi, cukup kata "ping") untuk chat personal, SEBELUM guard. Log uptime di event `ready` pakai `process.uptime()`.
+   - Harus tetap berjalan saat AI/order tidak dikonfigurasi (pesan ping tidak boleh kena guard/AI).
+
+5. **Deploy VPS + PM2**:
+   - Tulis `server/DEPLOY.md` langkah nyata (Oracle Cloud Ubuntu):
+     - `git clone`, `npm ci`, `npm run build`
+     - Install Chromium: `sudo apt update && sudo apt install -y chromium-browser` → set `PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium` di `.env`. Kalau pakai Chrome: `/usr/bin/google-chrome`.
+     - Backup `server/session/` sebelum migrate; JANGAN commit folder session.
+     - Buat `.env` dari `.env.example` (WA_BOT_PHONE, NVIDIA_API_KEY/MODEL, SUPABASE_*, WA_BOT_USER_ID, EMBEDDING_*, PUPPETEER_EXECUTABLE_PATH). JANGAN commit.
+     - PM2: buat `server/ecosystem.config.js` → `apps[0]` { name: 'cafesite-wa-bot', script: 'dist/index.js', cwd: 'server', env: isi dari .env, max_memory_restart: '300M', kill_timeout: 3000, restart_delay: 3000, autorestart: true }.
+     - Jalankan: `pm2 start ecosystem.config.js && pm2 save`, lalu `pm2 startup` (perintah output diikuti persis) supaya idempotent after reboot.
+     - Verifikasi log via `pm2 logs cafesite-wa-bot`.
+   - Session WhatsApp mobile TETAP berlaku di PM2 selama folder `session` dibackup & dipindah utuh — tulis di DEPLOY.md.
+
+## Pengujian
+- `npm run build` di `server/` → 0 error.
+- Simulasikan disconnect (matikan internet laptop / `kill` proses chrome orphan) → bot reconnect sendiri dalam batas backoff.
+- Spam > N pesan dalam 1 menit → bot diam (tidak ada balasan), log rate-limit tercatat.
+- Test "ping" → "pong" walau NVIDIA_API_KEY kosong.
+- Deploy ke VPS → `pm2 status` online; `sudo reboot` → bot kembali online tanpa langkah manual (PM2 startup).
+- Pastikan tidak ada duplikasi handler / event listener yang terpasang dua kali ketika start ulang.
+
+## Catatan
+- Jangan tambah dependency baru (rate-limit cukup Map + Date.now; anti-spam tidak perlu redis).
+- Jangan sentuh kontrak `askAI`, `handleChat`, alur order (Fase 4), dan RAG (Fase 3).
+- Kalau ada keputusan (mis. jumlah rate-limit, panjang window), tulis jelas di comment + doc, bukan dibahas di runtime.
 ```
 
 ---
@@ -249,8 +319,11 @@ Tugasmu: polish bot `server/` agar stabil jalan 24/7 di VPS (target Oracle Cloud
 ## 6. Checklist Per Phase
 
 - [ ] P1: bot login + ping/pong + auto-reconnect
-- [ ] P2: AI Nemotron (OpenRouter) + guard topik
-- [ ] P3: RAG (pgvector) upload → chunk → embed → retrieve → jawab kontekstual
+- [x] P2: AI Nemotron (NVIDIA API) + guard topik
+- [x] P3: RAG (pgvector) upload → chunk → embed → retrieve → jawab kontekstual
+  - Kode: `server/src/rag/` (embed.ts, chunk.ts, ingest.ts, retrieve.ts) + `server/src/supabase/client.ts`
+  - SQL: `supabase/04_rag_documents.sql` (tabel `rag_documents`, HNSW index, RLS, RPC `match_rag_documents`)
+  - CLI: `npm run rag:ingest <path.pdf>` di `server/`
 - [ ] P4: order WA (dev `bayar`) masuk dashboard paid
 - [ ] P5: rate-limit + PM2 + deploy VPS + recovery
 
@@ -260,6 +333,8 @@ Tugasmu: polish bot `server/` agar stabil jalan 24/7 di VPS (target Oracle Cloud
 
 | Tanggal | Keputusan | Alasan |
 |---|---|---|
-| (isi) | Model: Nemotron 3.5 Lightning via OpenRouter | Tercepat untuk always-on agent, murah ($0.08/M input) |
+| (isi) | Provider AI: NVIDIA API langsung (`integrate.api.nvidia.com`), bukan OpenRouter | Sudah diimplementasikan di Phase 2; endpoint OpenAI-compatible, non-streaming, fetch native, tanpa HTTP-Referer/X-Title |
+| (isi) | Model ID: `nvidia/nemotron-3.5-lightning-30b-a3b` via env `NVIDIA_MODEL` | ID resmi NVIDIA API (bukan ID OpenRouter); key `nvapi-...` di `NVIDIA_API_KEY` |
 | (isi) | RAG di Supabase + pgvector | Sudah ada project Supabase untuk dashboard |
+| (isi) | Embedding model: NVIDIA `nvidia/nv-embedqa-e5-v5` (dimensi 1024) via `integrate.api.nvidia.com/v1/embeddings` | Satu ecosystem dengan chat (pakai `NVIDIA_API_KEY` yang sama); embed diimplementasikan pada Phase 3, bukan OpenAI agar tidak perlu API key terpisah |
 | (isi) | (dsb.) | |
