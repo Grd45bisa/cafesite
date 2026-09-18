@@ -14,6 +14,7 @@ export interface MenuItem {
   image?: string;
   tags?: string[];
   isFeatured?: boolean;
+  isAvailable?: boolean;
 }
 
 export interface OpeningHour {
@@ -49,6 +50,8 @@ export interface GalleryPhoto {
   aspect: "portrait" | "landscape" | "square";
   year?: string;
   title?: string;
+  src?: string;
+  alt?: string;
 }
 
 export interface GalleryImage {
@@ -92,3 +95,27 @@ export interface LocationFaqItem {
 
 export type WhatsAppContext = "general" | "reservation" | "menu_inquiry" | "group_booking";
 
+export interface PublicContent {
+  cafe: CafeInfo;
+  menu: MenuItem[];
+  gallery: GalleryPhoto[];
+  testimonials: Testimonial[];
+  faq: LocationFaqItem[];
+  location: TransportGuideItem[];
+  configured: boolean;
+}
+
+export interface PublicContentProviderProps {
+  data: PublicContent;
+  children: React.ReactNode;
+}
+
+export interface SiteShellProps {
+  children: React.ReactNode;
+  footer: React.ReactNode;
+  floatingContact: React.ReactNode;
+}
+
+export * from "./operations";
+export * from "./admin";
+export * from "./ordering";

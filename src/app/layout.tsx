@@ -1,9 +1,5 @@
 import type { Metadata } from "next";
 import { Playfair_Display, Plus_Jakarta_Sans } from "next/font/google";
-import { Navbar } from "@/components/layout/Navbar";
-import { Footer } from "@/components/layout/Footer";
-import { FloatingWhatsApp } from "@/components/layout/FloatingWhatsApp";
-import { StickyMobileCTA } from "@/components/layout/StickyMobileCTA";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { SITE_URL, siteConfig } from "@/config/site";
 import { buildLocalBusinessJsonLd, buildWebSiteJsonLd } from "@/lib/seo";
@@ -88,19 +84,7 @@ export default function RootLayout({
           Langsung ke konten utama
         </a>
 
-        <header>
-          <Navbar />
-        </header>
-
-        <main id="main-content" className="pt-16 pb-20 md:pb-0">
-          {children}
-        </main>
-
-        <Footer />
-
-        {/* Overlay Conversion Components */}
-        <FloatingWhatsApp />
-        <StickyMobileCTA />
+        {children}
       </body>
     </html>
   );

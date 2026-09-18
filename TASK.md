@@ -162,10 +162,38 @@ Update status di setiap task seiring progress.
 - [ ] Serah terima ke client + penjelasan batasan versi gratis — oleh user
 - [x] Catat roadmap Phase 2 (dashboard, reservasi, online ordering, CMS) — lihat `CONTENT_QUESTIONNAIRE.md` §6 & batasan di `AGENTS.md` §5
 
+## Phase 16 — Dashboard & Pemesanan (dalam pengerjaan)
+> Keputusan client: pembayaran online ditunda dan ditampilkan sebagai **"Segera hadir"**. Checkout aktif yang dituju adalah **bayar di kasir (COD)**. Konfigurasi operasional: admin + staf, upload foto, publikasi langsung, QR bisa dicetak, makan di tempat dan bawa pulang.
+
+- [x] Tambahkan dependensi Supabase browser/server dan QR generator (`@supabase/supabase-js`, `qrcode`)
+- [x] Rancang model data TypeScript untuk role, modul staf, meja, pesanan, item pesanan, serta cart (`src/types/{operations,admin,ordering}.ts`)
+- [x] Siapkan skema Supabase copy-paste (`supabase/01_schema.sql`): tabel, index, RLS, Storage, Realtime, dan fungsi transaksi atomik untuk pesanan/status meja
+- [x] Siapkan helper konfigurasi Supabase browser/server dan validasi input server yang ketat
+- [x] Buat halaman dashboard `/admin` dengan login Supabase, pembatasan akses admin/staf, navigasi modul, serta tampilan saat konfigurasi belum tersedia
+- [x] Pisahkan autentikasi dan dashboard: `/auth` khusus login, `/dashboard` wajib sesi, `/admin` redirect ke `/dashboard`; website publik tidak menampilkan tombol login
+- [x] Buat halaman `/order` dan `/order/[id]`, menu pemesanan responsif, cart localStorage, deteksi query `?meja=`, serta pesan status konfigurasi
+- [x] Tetapkan COD sebagai metode pembayaran yang diizinkan dalam validasi dan skema database; pembayaran online ditandai segera hadir
+- [x] Dokumentasikan langkah penyiapan project, akun admin pertama, environment variable, dan batasan keamanan (`SETUP_SUPABASE.md`)
+- [x] Siapkan SQL satu kali untuk menjadikan seluruh akun Supabase yang sudah ada sebagai admin, dengan pengecualian wajib untuk akun customer anonim (`supabase/02_promote_existing_users_to_admin.sql`)
+- [x] Verifikasi build Next.js 16 berhasil: 14 route termasuk `/admin`, `/order`, `/order/[id]`
+- [ ] Buat seluruh Route Handlers API yang menghubungkan UI ke fungsi Supabase
+  - [x] Catalog menu/meja, checkout COD atomik, add-on, dan baca status pesanan customer
+  - [x] Bootstrap login dashboard dan baca/update status antrian staff
+  - [x] Baca/simpan konten kafe, galeri, testimoni, FAQ, panduan lokasi, menu, meja, dan pengaturan modul lewat endpoint berotorisasi
+  - [x] CRUD UI khusus menu: tambah, edit, hapus, kategori, harga, deskripsi, tag, unggulan, urutan, tersedia/habis, dan upload foto Supabase Storage
+  - [ ] CRUD UI khusus meja/QR serta laporan agregat
+- [ ] Implementasikan UI operasional penuh tiap modul dashboard (antrian live, CRUD menu/konten, unggah gambar, denah drag-drop, cetak QR, laporan, pengaturan modul)
+- [ ] Hubungkan website publik ke data dashboard agar menu, galeri, lokasi, FAQ, dan testimoni langsung memakai database
+- [ ] Implementasikan seluruh Realtime operasional
+  - [x] Pelacakan status pesanan customer melalui Supabase Realtime
+  - [ ] Antrian staff, pembaruan meja, dan notifikasi suara/vibrasi pesanan baru
+- [ ] Jalankan SQL pada project Supabase milik client, buat akun admin pertama, isi environment Vercel, dan uji RLS/Realtime end-to-end
+- [ ] Masukkan data asli cafe (logo, foto, menu, alamat, jam, WhatsApp, Instagram) sebelum peluncuran
+
 ## Tugas Terbaru — Draft (masih dipikirkan)
-> Bagian ini belum dikunci — isi akan disesuaikan setelah user memutuskan arah berikutnya.
 
 ### Admin Dashboard — Phase 2 (berbayar) — Opsi A: Content-Only CMS + Online Ordering (ala Mi Gacoan) + Payment Gateway
+> Implementasi awal sudah tersedia: skema Supabase/RLS/Realtime di `supabase/01_schema.sql`, dashboard di `/admin`, dan alur `/order`. Aktivasi menunggu project Supabase, akun admin, serta data asli kafe. Pembayaran online ditunda atas keputusan client; pembayaran kasir/COD menjadi alur aktif.
 **Keputusan:** Dashboard = control panel konten + penerima pesanan; website utama baca dari database. **Opsi A** → dashboard mengurus *konten data* (menu, info, galeri, testimoni, FAQ, panduan). Copy marketing (hero headline, intro section, cerita About) tetap di kode/copywriter. **Tambah:** customer bisa **pesan via website** tanpa akun, alur ala Mi Gacoan + **QR per meja & sketsa meja per lantai** + **Payment Gateway** (wajib ada, tapi provider masih dicari — yang registrasinya simpel, modal KTP saja).
 
 **Arsitektur (rencana):**
@@ -213,9 +241,9 @@ Update status di setiap task seiring progress.
 - [ ] Upload foto langsung dari dashboard: wajib atau tidak?
 - [ ] Fitur reservasi (list pemesanan dari WA) ikut dashboard ini atau fase terpisah?
 - [ ] Save langsung update web, atau ada tombol "Publish" dulu?
-- [ ] Payment gateway: **wajib ada**; masih mencari provider yang registrasi simpel (modal KTP saja, tanpa ribet) — kandidat yang harus dicek: **Tripay**, **Midtrans**, **Xendit**, **Ipaymu** (putusan menyusul setelah riset user)
-- [ ] QR meja: owner butuh export buat cetak stiker sendiri, atau cukup tampil di dashboard? (mis. dapat file PDF/gambar per meja)
-- [ ] Mau ada opsi "Bawa Pulang / Takeaway" (tanpa meja) juga, atau murni order per meja dulu?
+- [x] Payment gateway ditunda oleh client; tampilkan "Segera hadir", aktifkan COD/bayar di kasir
+- [x] QR meja perlu dapat diekspor untuk cetak stiker
+- [x] Sediakan opsi Makan di Tempat dan Bawa Pulang
 - [ ] Sketsa meja: posisi meja bebas (drag & drop manual) atau pakai grid/kamar tetap (mis. 2x2, 3x3) biar rapi?
 
 ---
