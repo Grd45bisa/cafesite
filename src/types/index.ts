@@ -11,6 +11,7 @@ export interface MenuCategoryMeta {
   name: string;
   description: string;
   icon?: string;
+  image?: string;
   sort_order?: number;
 }
 

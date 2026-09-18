@@ -28,7 +28,7 @@ export function Hero() {
       {/* ========================================================================= */}
       {/* 1. MOBILE HERO (< lg) — Dipertahankan sesuai desain asli, anti-overflow */}
       {/* ========================================================================= */}
-      <div className="relative flex min-h-[calc(100vh-4.5rem)] items-center py-16 lg:hidden">
+      <div className="relative flex min-h-[calc(100svh-4.5rem)] items-center pt-10 pb-16 lg:hidden">
         {/* Mobile Background Image & Dark Atmosphere Overlay */}
         <div className="absolute inset-0 z-0 overflow-hidden">
           <Image

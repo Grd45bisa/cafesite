@@ -1,9 +1,11 @@
+import Image from "next/image";
 import { ImageIcon } from "@/components/ui/icons";
 
 interface GalleryPreviewFigureProps {
   id: string;
   title: string;
   note: string;
+  src?: string;
   className?: string;
   isActive: boolean;
   onToggle: (id: string) => void;
@@ -20,6 +22,7 @@ export function GalleryPreviewFigure({
   id,
   title,
   note,
+  src,
   className = "",
   isActive,
   onToggle,
@@ -42,7 +45,17 @@ export function GalleryPreviewFigure({
       } ${className}`}
     >
       <div className="absolute inset-0 flex items-center justify-center">
-        <ImageIcon className="h-7 w-7 text-charcoal-muted" />
+        {src ? (
+          <Image
+            src={src}
+            alt={title}
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            className="object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+        ) : (
+          <ImageIcon className="h-7 w-7 text-charcoal-muted" />
+        )}
       </div>
       <figcaption
         className={`pointer-events-none absolute inset-x-0 bottom-0 bg-charcoal/85 p-3.5 transition-opacity duration-200 ${

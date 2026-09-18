@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { AdminMenuRecord } from "@/types";
 import { formatPrice } from "@/lib/utils";
 
@@ -36,6 +37,17 @@ export default function MenuRow({
 }: MenuRowProps): React.JSX.Element {
   const { data } = record;
   const available = record.is_available !== false;
+  const [isShaking, setIsShaking] = useState(false);
+
+  function handleHandleClick() {
+    setIsShaking(false);
+    requestAnimationFrame(() => {
+      setIsShaking(true);
+      setTimeout(() => {
+        setIsShaking(false);
+      }, 500);
+    });
+  }
 
   return (
     <article
@@ -43,6 +55,8 @@ export default function MenuRow({
       onDragLeave={onDragLeave}
       onDrop={onDrop}
       className={`group flex flex-col gap-3 border-b border-charcoal-border/20 py-3.5 last:border-b-0 transition-all duration-150 sm:flex-row sm:items-center sm:justify-between ${
+        isShaking ? "animate-shake-vertical border-latte/60 bg-charcoal-light/25 shadow-md" : ""
+      } ${
         isDragging ? "opacity-35 bg-charcoal-light/30 border-dashed border-latte rounded-xl" : ""
       } ${
         isDragOver ? "border-t-2 border-t-latte bg-charcoal-lighter/25 pl-2 rounded-lg" : ""
@@ -55,9 +69,10 @@ export default function MenuRow({
           <button
             type="button"
             draggable
+            onClick={handleHandleClick}
             onDragStart={onDragStart}
             onDragEnd={onDragEnd}
-            title="Tahan dan tarik untuk mengatur urutan"
+            title="Tahan dan tarik untuk mengatur urutan (atau klik untuk petunjuk)"
             aria-label="Tahan dan tarik untuk mengatur urutan"
             className="flex h-8 w-8 cursor-grab active:cursor-grabbing items-center justify-center rounded-lg border border-transparent text-offwhite-darker transition-colors hover:border-charcoal-border hover:bg-charcoal-light/60 hover:text-offwhite group-hover:text-offwhite-muted"
           >

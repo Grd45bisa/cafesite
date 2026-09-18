@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Image from "next/image";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -120,14 +121,23 @@ export function GalleryLightbox({
         </div>
 
         {/* Frame Foto Utama: Flat Aspect Ratio (16:10) — Tidak Berubah Ukuran Saat Navigasi */}
-        {/* // TODO: ganti dengan foto asli dari PHOTO_BRIEF.md via next/image saat asset fisik tersedia */}
         <div className="relative mt-3.5 flex aspect-[16/10] w-full items-center justify-center overflow-hidden rounded-md border border-charcoal-border/50 bg-charcoal-lighter">
-          <div className="flex flex-col items-center justify-center gap-2 p-4 text-center">
-            <ImageIcon className="h-8 w-8 text-charcoal-muted" />
-            <p className="font-serif text-xs text-offwhite-muted">
-              {photo.title}
-            </p>
-          </div>
+          {photo.src ? (
+            <Image
+              src={photo.src}
+              alt={photo.alt || photo.title || "Detail foto galeri"}
+              fill
+              sizes="(max-width: 768px) 100vw, 600px"
+              className="object-cover"
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center gap-2 p-4 text-center">
+              <ImageIcon className="h-8 w-8 text-charcoal-muted" />
+              <p className="font-serif text-xs text-offwhite-muted">
+                {photo.title}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Keterangan Teks Mengalir Natural di Bawah Foto */}

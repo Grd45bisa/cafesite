@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { Container } from "@/components/ui/Container";
 import { MenuItemRow } from "@/components/menu/MenuItemRow";
 import { ImageIcon } from "@/components/ui/icons";
@@ -23,6 +24,7 @@ export function MenuCategorySection({
   const isEven = index % 2 === 0;
   const photoRight = index % 2 !== 0;
   const bgClass = isEven ? "bg-charcoal" : "bg-charcoal-darkest";
+  const categoryImage = category.image || items.find((i) => i.image)?.image;
 
   const indexedItems = items.map((item, itemIndex) => ({ item, itemIndex }));
   const midPoint = Math.ceil(indexedItems.length / 2);
@@ -53,11 +55,21 @@ export function MenuCategorySection({
           {/* Area Foto Kategori (hanya lg+) */}
           <figure
             aria-hidden="true"
-            className={`hidden items-center justify-center rounded-md border border-charcoal-border/50 bg-charcoal-lighter lg:col-span-4 lg:flex lg:min-h-[340px] ${
+            className={`relative hidden overflow-hidden rounded-md border border-charcoal-border/50 bg-charcoal-lighter lg:col-span-4 lg:flex lg:min-h-[340px] ${
               photoRight ? "lg:order-2" : ""
             }`}
           >
-            <ImageIcon className="h-10 w-10 text-charcoal-muted" />
+            {categoryImage ? (
+              <Image
+                src={categoryImage}
+                alt={category.name}
+                fill
+                sizes="(min-width: 1024px) 33vw, 100vw"
+                className="object-cover"
+              />
+            ) : (
+              <ImageIcon className="h-10 w-10 text-charcoal-muted" />
+            )}
           </figure>
 
           {/* Daftar Menu */}

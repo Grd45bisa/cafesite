@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { ExpandIcon, ImageIcon } from "@/components/ui/icons";
 import { GalleryPhoto } from "@/types";
 import { GalleryLightbox } from "./GalleryLightbox";
@@ -155,10 +156,20 @@ export function GalleryGrid({ photos }: GalleryGridProps) {
                   aspectClassByType[photo.aspect]
                 }`}
               >
-                <ImageIcon className="h-7 w-7 text-charcoal-muted transition-colors group-hover:text-latte" />
+                {photo.src ? (
+                  <Image
+                    src={photo.src}
+                    alt={photo.alt || photo.title || "Foto galeri"}
+                    fill
+                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                    className="object-cover"
+                  />
+                ) : (
+                  <ImageIcon className="h-7 w-7 text-charcoal-muted transition-colors group-hover:text-latte" />
+                )}
 
                 {/* Badge Kategori Minimalis di Sudut Atas (Terlihat saat tidak di-hover) */}
-                <span className="absolute top-2.5 left-2.5 rounded bg-charcoal/80 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-offwhite-muted backdrop-blur-sm group-hover:opacity-0 transition-opacity duration-200">
+                <span className="absolute top-2.5 left-2.5 z-10 rounded bg-charcoal/80 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-offwhite-muted backdrop-blur-sm group-hover:opacity-0 transition-opacity duration-200">
                   {photo.category}
                 </span>
               </figure>

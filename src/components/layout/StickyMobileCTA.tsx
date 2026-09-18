@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MenuItemRow } from "@/components/menu/MenuItemRow";
-import { CloseIcon } from "@/components/ui/icons";
+import { QrScannerModal } from "@/components/order/QrScannerModal";
+import { CloseIcon, QrCodeIcon } from "@/components/ui/icons";
 import { cafeInfo } from "@/data/cafe";
 import { menuCategories, menuItems } from "@/data/menu";
 import { buildWhatsAppUrl } from "@/lib/utils";
@@ -18,6 +19,7 @@ const SHEET_ANIMATION_MS = 300;
 export function StickyMobileCTA() {
   const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const waUrl = buildWhatsAppUrl(cafeInfo.whatsapp, "reservation");
 
@@ -151,9 +153,22 @@ export function StickyMobileCTA() {
                 );
               })}
             </div>
+
+            <div className="shrink-0 border-t border-charcoal-border/30 bg-charcoal px-5 py-3.5 pb-[calc(env(safe-area-inset-bottom)+0.875rem)]">
+              <button
+                type="button"
+                onClick={() => setScannerOpen(true)}
+                className="flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-terracotta text-sm font-semibold text-offwhite transition-colors hover:bg-terracotta-hover"
+              >
+                <QrCodeIcon className="h-4 w-4" />
+                Pesan · Pindai QR di Meja
+              </button>
+            </div>
           </div>
         </>
       )}
+
+      {scannerOpen && <QrScannerModal onClose={() => setScannerOpen(false)} />}
     </>
   );
 }

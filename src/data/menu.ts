@@ -5,26 +5,57 @@ export interface MenuCategoryMeta {
   name: string;
   description: string;
   icon?: string;
+  image?: string;
 }
 
 export const menuCategories: MenuCategoryMeta[] = [
-  { id: "coffee", name: "Coffee", description: "Biji Nusantara yang kami sangrai sendiri, plus espresso yang diracik pelan", icon: "☕" },
-  { id: "non-coffee", name: "Non-Coffee", description: "Teh, matcha Uji, dan mocktail — buat hari-hari yang nggak ngopi", icon: "🍵" },
-  { id: "food", name: "Food", description: "Makanan berat dengan bumbu yang nggak malu-malu", icon: "🍳" },
-  { id: "snack", name: "Snack", description: "Camilan gurih yang bikin ngobrol makin lama", icon: "🍟" },
-  { id: "dessert", name: "Dessert", description: "Penutup yang susah ditolak. Serius.", icon: "🥐" },
+  {
+    id: "coffee",
+    name: "Coffee",
+    description: "Biji Nusantara yang kami sangrai sendiri, plus espresso yang diracik pelan",
+    icon: "☕",
+    image: "/Image/Gallery/gal-02-morning-brew.jpg",
+  },
+  {
+    id: "non-coffee",
+    name: "Non-Coffee",
+    description: "Teh, matcha Uji, dan mocktail — buat hari-hari yang nggak ngopi",
+    icon: "🍵",
+    image: "/Image/Menu/Berry_Tea.jpg",
+  },
+  {
+    id: "food",
+    name: "Food",
+    description: "Makanan berat dengan bumbu yang nggak malu-malu",
+    icon: "🍳",
+    image: "/Image/Menu/Nasi_Goreng.jpg",
+  },
+  {
+    id: "snack",
+    name: "Snack",
+    description: "Camilan gurih yang bikin ngobrol makin lama",
+    icon: "🍟",
+    image: "/Image/Menu/Truffle_Fries.jpg",
+  },
+  {
+    id: "dessert",
+    name: "Dessert",
+    description: "Penutup yang susah ditolak. Serius.",
+    icon: "🥐",
+    image: "/Image/Menu/Croissant.jpg",
+  },
 ];
 
-// TODO: ganti dengan data asli client setelah form CONTENT_QUESTIONNAIRE.md §3 diisi
+// Data menu CafeSite dengan gambar asli di /Image/Menu/
 export const menuItems: MenuItem[] = [
   // --- Kategori: Coffee ---
   {
     id: "c-01",
-    name: "Americano", // TODO: ganti dengan data asli client
+    name: "Americano",
     description: "Espresso single origin Sumatra. Panas atau dingin, dua-duanya enak.",
     price: 22000,
     category: "coffee",
-    image: "/images/menu/coffee-americano.jpg",
+    image: "/Image/Menu/Americano.jpg",
     tags: ["Single Origin", "Sugar Free"],
     isFeatured: false,
   },
@@ -62,21 +93,21 @@ export const menuItems: MenuItem[] = [
   },
   {
     id: "nc-02",
-    name: "Artisan Berry Tea", // TODO: ganti dengan data asli client
+    name: "Artisan Berry Tea",
     description: "Teh hitam beraroma berry. Asem manis yang bikin nggak bosen.",
     price: 24000,
     category: "non-coffee",
-    image: "/images/menu/noncoffee-berry-tea.jpg",
+    image: "/Image/Menu/Berry_Tea.jpg",
     tags: ["Refreshing", "Iced"],
     isFeatured: false,
   },
   {
     id: "nc-03",
-    name: "Sparkling Lychee Mint", // TODO: ganti dengan data asli client
+    name: "Sparkling Lychee Mint",
     description: "Soda dengan leci utuh dan mint yang diremas. Coba deh pas siang panas.",
     price: 28000,
     category: "non-coffee",
-    image: "/images/menu/noncoffee-lychee.jpg",
+    image: "/Image/Menu/Lychee_Mint.jpg",
     tags: ["Mocktail", "Citrus"],
     isFeatured: false,
   },
@@ -84,21 +115,21 @@ export const menuItems: MenuItem[] = [
   // --- Kategori: Food ---
   {
     id: "f-01",
-    name: "Nasi Goreng Kampung", // TODO: ganti dengan data asli client
+    name: "Nasi Goreng Kampung",
     description: "Nasgor rempah dengan ayam suwir, acar, dan telor ceplok. Pulang malem wajib ini.",
     price: 35000,
     category: "food",
-    image: "/images/menu/food-nasgor.jpg",
+    image: "/Image/Menu/Nasi_Goreng.jpg",
     tags: ["Signature", "Hearty"],
     isFeatured: true,
   },
   {
     id: "f-02",
-    name: "Creamy Chicken Carbonara", // TODO: ganti dengan data asli client
+    name: "Creamy Chicken Carbonara",
     description: "Fettuccine creamy, parmesan, smoked chicken. Cocok pas lagi laper parah.",
     price: 42000,
     category: "food",
-    image: "/images/menu/food-carbonara.jpg",
+    image: "/Image/Menu/Carbonara.jpg",
     tags: ["Pasta", "Creamy"],
     isFeatured: false,
   },
@@ -106,21 +137,21 @@ export const menuItems: MenuItem[] = [
   // --- Kategori: Snack ---
   {
     id: "s-01",
-    name: "Truffle Fries", // TODO: ganti dengan data asli client
+    name: "Truffle Fries",
     description: "Kentang goreng minyak truffle, parmesannya nggak tanggung. Buat berdua pas.",
     price: 25000,
     category: "snack",
-    image: "/images/menu/snack-truffle-fries.jpg",
+    image: "/Image/Menu/Truffle_Fries.jpg",
     tags: ["Favorit Tamu", "Sharing"],
     isFeatured: true,
   },
   {
     id: "s-02",
-    name: "Cireng Bumbu Rujak", // TODO: ganti dengan data asli client
+    name: "Cireng Bumbu Rujak",
     description: "Aci renyah di luar, kenyal di dalam. Sambalnya asem nendang.",
     price: 20000,
     category: "snack",
-    image: "/images/menu/snack-cireng.jpg",
+    image: "/Image/Menu/Cireng.jpg",
     tags: ["Tradisional", "Spicy"],
     isFeatured: false,
   },
@@ -128,21 +159,21 @@ export const menuItems: MenuItem[] = [
   // --- Kategori: Dessert ---
   {
     id: "d-01",
-    name: "Classic Butter Croissant", // TODO: ganti dengan data asli client
+    name: "Classic Butter Croissant",
     description: "Lapisannya renyah, wangi butter, dalemnya lembut. Dibakar dikit makin enak.",
     price: 24000,
     category: "dessert",
-    image: "/images/menu/dessert-croissant.jpg",
+    image: "/Image/Menu/Croissant.jpg",
     tags: ["Fresh Baked", "French"],
     isFeatured: true,
   },
   {
     id: "d-02",
-    name: "Basque Burnt Cheesecake", // TODO: ganti dengan data asli client
+    name: "Basque Burnt Cheesecake",
     description: "Dalemnya lumer, atasnya karamel khas basque. Simpel tapi nagih.",
     price: 32000,
     category: "dessert",
-    image: "/images/menu/dessert-cheesecake.jpg",
+    image: "/Image/Menu/Cheesecake.jpg",
     tags: ["Sweet", "Rich"],
     isFeatured: false,
   },

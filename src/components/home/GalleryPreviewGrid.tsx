@@ -7,6 +7,7 @@ interface GalleryPreviewItem {
   id: string;
   title: string;
   note: string;
+  src?: string;
   className: string;
 }
 
@@ -15,6 +16,7 @@ const galleryPreviewItems: GalleryPreviewItem[] = [
     id: "g-01",
     title: "Meja Pojok Jendela",
     note: "Spot yang biasa diperebutkan pas sore",
+    src: "/Image/Gallery/gal-01-window-table.jpg",
     className:
       "col-span-2 aspect-[4/3] sm:col-span-2 sm:aspect-[16/10] lg:col-span-2 lg:row-span-2 lg:h-full lg:aspect-auto",
   },
@@ -22,18 +24,21 @@ const galleryPreviewItems: GalleryPreviewItem[] = [
     id: "g-02",
     title: "Latte Art di Balik Seduhan",
     note: "Tiap cangkir beda tembakannya",
+    src: "/Image/Gallery/gal-02-morning-brew.jpg",
     className: "aspect-[4/3] sm:aspect-square lg:aspect-square",
   },
   {
     id: "g-03",
     title: "Semi-Outdoor Pas Sore",
     note: "Langit sebentar cerah, kopi masih panas",
+    src: "/Image/Gallery/gal-03-after-rain.jpg",
     className: "aspect-[4/3] sm:aspect-square lg:aspect-square",
   },
   {
     id: "g-04",
     title: "Croissant dan Kopi",
     note: "Paduan yang jarang salah",
+    src: "/Image/Gallery/gal-09-croissant.jpg",
     className:
       "col-span-2 aspect-[4/3] sm:col-span-2 sm:aspect-[16/10] lg:col-span-2 lg:aspect-[16/10]",
   },

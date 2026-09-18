@@ -194,6 +194,14 @@ Update status di setiap task seiring progress.
 
 ## Tugas Terbaru — Draft (masih dipikirkan)
 
+### WA Bot — Plan (+ Prompt per Phase) di `WA_BOT_PLAN.md`
+> Bot WhatsApp (wa-webjs) di folder `server/` terpisah dari Next.js. AI memakai Nemotron 3.5 Lightning via OpenRouter ($0.08/M input; free var: Nano Omni). RAG di Supabase + pgvector. Order dev pakai keyword `bayar` (payment gateway iPaymu ditunda, lihat `ipaymu.md`).
+> - [x] Riset model Nemotron (Lightning/Nano Omni/Ultra) + harga & model ID OpenRouter
+> - [x] Tulis rencana sampai "fix" + prompt per phase (P1 laying → P2 AI hub → P3 RAG → P4 order → P5 ops) di `WA_BOT_PLAN.md`
+> - [ ] P1: eksekusi prompt Phase 1 (folder `server/` + wa-webjs login/QR/reconnect)
+
+## Tugas Terbaru — Draft (masih dipikirkan)
+
 ### Admin Dashboard — Phase 2 (berbayar) — Opsi A: Content-Only CMS + Online Ordering (ala Mi Gacoan) + Payment Gateway
 > Implementasi awal sudah tersedia: skema Supabase/RLS/Realtime di `supabase/01_schema.sql`, dashboard di `/admin`, dan alur `/order`. Aktivasi menunggu project Supabase, akun admin, serta data asli kafe. Pembayaran online ditunda atas keputusan client; pembayaran kasir/COD menjadi alur aktif.
 **Keputusan:** Dashboard = control panel konten + penerima pesanan; website utama baca dari database. **Opsi A** → dashboard mengurus *konten data* (menu, info, galeri, testimoni, FAQ, panduan). Copy marketing (hero headline, intro section, cerita About) tetap di kode/copywriter. **Tambah:** customer bisa **pesan via website** tanpa akun, alur ala Mi Gacoan + **QR per meja & sketsa meja per lantai** + **Payment Gateway** (wajib ada, tapi provider masih dicari — yang registrasinya simpel, modal KTP saja).
