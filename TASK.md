@@ -1,4 +1,4 @@
-# TASK.md — Task Breakdown
+﻿# TASK.md — Task Breakdown
 ## Project: CafeSite
 
 Status: `Not Started` | `In Progress` | `Done`
@@ -261,3 +261,21 @@ Update status di setiap task seiring progress.
 ### Catatan lama (sebelumnya)
 - [ ] (perlu diputuskan) Arah selanjutnya: versi lanjutan / perombakan / fitur baru
 - [ ] Kandidat: data asli client (alamat, jam, menu, foto, nomor WA) masuk ke `src/data/*`
+
+## WhatsApp Bot — Dashboard PDF RAG
+- [x] Modul wa_bot di navigasi dashboard, upload PDF, polling status, proses ulang, hapus per source.
+- [x] API berotorisasi dengan validasi MIME/header PDF/ukuran/path; tulis memakai service_role.
+- [x] Migrasi 06: bucket, RLS, antrean, klaim atomik, penggantian chunk transaksional halfvec(2048).
+- [x] Pipeline PDF/chunk/embed bersama CLI dan worker rag:watch; retry download satu kali, isolasi kegagalan job.
+- [x] Panduan aktivasi dan pemulihan worker di SETUP_WA_BOT_DASHBOARD.md.
+- [x] Verifikasi build root/server sukses (0 error); 2 tes pipeline lokal lolos (PDF invalid/oversize, ekstraksi nyata, embedding gagal tidak menulis, hasil job dibatalkan).
+- [ ] Terapkan migrasi 06 dan uji upload → jawaban WhatsApp, re-upload, delete, RLS staff pada deployment.
+
+
+## Perbaikan kontrol percakapan WhatsApp
+- [x] Deduplikasi ID pesan sebelum async, hilangkan fallback kirim ulang yang berpotensi membalas dua kali.
+- [x] Awalan @bot untuk satu pertanyaan; @bot saja aktifkan mode per nomor, @tutup nonaktifkan bahkan saat rate-limit.
+- [x] Timeout 5 menit tanpa chat, pembersihan sesi sementara, dan pembatalan balasan AI yang masih diproses.
+- [x] Build bot sukses; 5 tes regresi lolos (isolasi nomor, awalan, timeout, deduplikasi, pengiriman tanpa fallback, tutup saat AI berjalan/rate-limit).
+- [ ] Uji pengiriman WhatsApp langsung setelah restart proses bot deployment.
+

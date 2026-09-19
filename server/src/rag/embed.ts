@@ -1,4 +1,4 @@
-import { logger } from "../whatsapp/logger";
+import { logger, describeError } from "../whatsapp/logger";
 
 const REQUEST_TIMEOUT_MS = 30_000;
 const MAX_ATTEMPTS = 2; // percobaan pertama + 1x retry
@@ -95,8 +95,7 @@ export async function embed(config: EmbeddingConfig, texts: string[], inputType:
       return await callEmbeddingApi(config, texts, inputType);
     } catch (error: unknown) {
       lastError = error;
-      const message = error instanceof Error ? error.message : String(error);
-      logger.warn("Percobaan panggilan embedding API gagal.", { attempt, maxAttempts: MAX_ATTEMPTS, error: message });
+      logger.warn("Percobaan panggilan embedding API gagal.", { attempt, maxAttempts: MAX_ATTEMPTS, error: describeError(error) });
 
       if (attempt < MAX_ATTEMPTS) {
         await sleep(1_000);
@@ -104,6 +103,5 @@ export async function embed(config: EmbeddingConfig, texts: string[], inputType:
     }
   }
 
-  const finalMessage = lastError instanceof Error ? lastError.message : String(lastError);
-  throw new Error(`Gagal memanggil embedding API setelah ${MAX_ATTEMPTS} percobaan: ${finalMessage}`);
+  throw new Error(`Gagal memanggil embedding API setelah ${MAX_ATTEMPTS} percobaan: ${describeError(lastError)}`);
 }

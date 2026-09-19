@@ -38,3 +38,21 @@ export const logger = {
     write("error", message, meta);
   },
 };
+
+/**
+ * Ubah `unknown` dari catch-block jadi string yang selalu informatif untuk
+ * log. `error instanceof Error ? error.message : String(error)` (pola lama
+ * di codebase ini) menghasilkan output buruk untuk exception non-Error -
+ * mis. Puppeteer/whatsapp-web.js kadang melempar string pendek atau object
+ * biasa, dan `String(error)` pada string pendek literal ("r") atau object
+ * ("[object Object]") tidak memberi info yang berguna untuk debug.
+ */
+export function describeError(error: unknown): string {
+  if (error instanceof Error) return error.stack ?? error.message;
+  if (typeof error === "string") return `(non-Error string thrown) "${error}"`;
+  try {
+    return `(non-Error value thrown) ${JSON.stringify(error)}`;
+  } catch {
+    return `(non-Error value thrown, tidak bisa di-JSON.stringify) ${String(error)}`;
+  }
+}

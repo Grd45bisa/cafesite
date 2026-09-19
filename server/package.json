@@ -8,7 +8,8 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "rag:ingest": "tsx src/rag/ingest.ts"
+    "rag:ingest": "tsx src/rag/ingest.ts",
+    "rag:watch": "tsx src/rag/watch.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",

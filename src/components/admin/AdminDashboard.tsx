@@ -9,6 +9,7 @@ import { adminError, adminRequest, adminSecondaryClass } from "./admin-api";
 import AdminNotice from "./AdminNotice";
 import AdminManage from "./AdminManage";
 import MenuManager from "./MenuManager";
+import WaBotManager from "./WaBotManager";
 import TableManager from "./tables/TableManager";
 import OrderManager from "./orders/OrderManager";
 import { useOrderSound } from "./orders/useOrderSound";
@@ -20,6 +21,7 @@ interface ModuleMeta {
 }
 
 const navigation: ModuleMeta[] = [
+  { id: "wa_bot", label: "WhatsApp Bot", caption: "Dokumen RAG & status asisten WhatsApp." },
   { id: "orders", label: "Pesanan", caption: "Dari pesanan masuk sampai tersaji ke meja." },
   { id: "menu", label: "Menu kedai", caption: "Pilihan yang membuat mereka kembali." },
   { id: "tables", label: "Meja & QR", caption: "Tempat untuk setiap cerita." },
@@ -33,7 +35,7 @@ const navigation: ModuleMeta[] = [
 ];
 
 const groups: { title: string; ids: AdminModule[] }[] = [
-  { title: "Operasional", ids: ["orders", "menu", "tables"] },
+  { title: "Operasional", ids: ["orders", "menu", "tables", "wa_bot"] },
   { title: "Konten", ids: ["cafe", "gallery", "testimonials", "faq", "location"] },
   { title: "Analitik & tim", ids: ["reports", "modules"] },
 ];
@@ -299,7 +301,9 @@ export default function AdminDashboard(): React.JSX.Element {
 
         <AdminNotice message={error} error />
         {selected && (
-          selected.id === "menu" ? (
+          selected.id === "wa_bot" ? (
+            <WaBotManager />
+          ) : selected.id === "menu" ? (
             <MenuManager />
           ) : selected.id === "orders" ? (
             <OrderManager muted={muted} canManageMenu={canUseMenu} onToggleMuted={toggleMuted} />

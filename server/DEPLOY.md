@@ -1,4 +1,4 @@
-# Deploy Bot WhatsApp CafeSite ke VPS (Oracle Cloud Always Free, Ubuntu)
+﻿# Deploy Bot WhatsApp CafeSite ke VPS (Oracle Cloud Always Free, Ubuntu)
 
 Panduan ini untuk menjalankan `server/` (bot WhatsApp standalone, terpisah dari Next.js) 24/7 di VPS memakai PM2, idempotent setelah reboot.
 
@@ -119,7 +119,7 @@ pm2 logs cafesite-wa-bot --lines 50
 
 Cek log terbaru — harus ada baris `Bot WhatsApp siap dan tersambung.`
 
-Test kirim pesan `ping` dari WhatsApp ke nomor bot — harus dibalas `pong` dalam hitungan detik.
+Test kirim pesan `@bot ping` dari WhatsApp ke nomor bot — harus dibalas `pong` dalam hitungan detik.
 
 ## 8. Update deploy (setelah ada perubahan kode)
 
@@ -152,3 +152,16 @@ Cek log untuk baris "Pesan ditahan oleh rate-limit." — ini bukan bug, itu rate
 ### Auth failure / perlu scan ulang QR
 
 Kalau log menunjukkan "Autentikasi gagal - perlu scan ulang QR.", bot **sengaja berhenti mencoba reconnect otomatis** (retry buta pada auth_failure tidak akan menyelesaikan masalah — WhatsApp di HP mungkin logout manual, atau sesi kedaluwarsa). Hapus folder `server/session/` lalu `pm2 restart cafesite-wa-bot` dan scan ulang QR dari `pm2 logs`.
+
+## Kontrol bot per nomor
+
+- `@bot pertanyaan` di awal pesan: jawab pesan tersebut satu kali; tidak otomatis mengaktifkan mode percakapan.
+- `@bot` saja: aktifkan balasan bot untuk nomor/chat pribadi tersebut. Pesan berikutnya boleh tanpa awalan.
+- `@tutup`: nonaktifkan, kosongkan sesi order sementara, dan abaikan jawaban AI lama yang masih diproses. Perintah tetap bekerja saat rate-limit tercapai.
+- Setelah 5 menit tanpa pesan masuk, sesi nonaktif otomatis tanpa pesan tambahan. Balasan bot tidak memperpanjang waktu. Pesan baru yang datang tepat/setelah batas waktu membutuhkan `@bot` lagi.
+- Health check kini `@bot ping` → `pong`. Chat biasa saat nonaktif diabaikan, termasuk intent order. Grup/status/pesan sendiri tetap diabaikan.
+- State aktivasi dan deduplikasi disimpan di memori satu proses: restart menonaktifkan semua nomor. ID pesan dideduplikasi selama 1 jam; tidak ada retry kirim otomatis ketika status pengiriman tidak pasti.
+- Jalankan satu instance bot saja (jangan menjalankan `npm run dev` bersamaan dengan PM2/start untuk nomor yang sama). Deduplikasi memori tidak lintas proses.
+
+Tes: `npm run build` lalu `node --test tests/bot-access.test.cjs` dari folder server. Setelah deploy, restart satu proses bot dan uji dua nomor berbeda.
+

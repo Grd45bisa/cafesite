@@ -2,7 +2,7 @@ import { askAI, type NemotronConfig } from "./nemotronClient";
 import { isCafeRelated, OFF_TOPIC_REPLY } from "./guard";
 import { SYSTEM_PROMPT } from "./systemPrompt";
 import type { ChatMessage } from "./types";
-import { logger } from "../whatsapp/logger";
+import { logger, describeError } from "../whatsapp/logger";
 import { loadEnv, getEmbeddingConfig, getSupabaseConfig } from "../config/env";
 import { retrieve } from "../rag/retrieve";
 
@@ -37,9 +37,7 @@ async function tryRetrieveContext(text: string): Promise<string[]> {
     const supabaseConfig = getSupabaseConfig(env);
     return await retrieve(embeddingConfig, supabaseConfig, text, RAG_TOP_K);
   } catch (error: unknown) {
-    logger.warn("Retrieve RAG gagal atau belum dikonfigurasi, lanjut tanpa konteks dokumen.", {
-      error: error instanceof Error ? error.message : String(error),
-    });
+    logger.warn("Retrieve RAG gagal atau belum dikonfigurasi, lanjut tanpa konteks dokumen.", { error: describeError(error) });
     return [];
   }
 }
@@ -64,9 +62,7 @@ export async function handleChat(config: NemotronConfig, userName: string, text:
     const messages = buildMessages(userName, text, ragContext);
     return await askAI(config, messages);
   } catch (error: unknown) {
-    logger.error("Gagal mendapatkan jawaban dari AI.", {
-      error: error instanceof Error ? error.message : String(error),
-    });
+    logger.error("Gagal mendapatkan jawaban dari AI.", { error: describeError(error) });
     return AI_ERROR_REPLY;
   }
 }

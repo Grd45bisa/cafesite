@@ -1,5 +1,5 @@
 import type { Client } from "whatsapp-web.js";
-import { logger } from "./logger";
+import { logger, describeError } from "./logger";
 
 const DESTROY_TIMEOUT_MS = 10_000;
 
@@ -43,10 +43,7 @@ export function registerGracefulShutdown(client: Client, cancelReconnect: () => 
       await withTimeout(client.destroy(), DESTROY_TIMEOUT_MS, "client.destroy() melebihi batas waktu.");
       logger.info("Shutdown bersih selesai.", { signal });
     } catch (error: unknown) {
-      logger.error("Gagal menutup client dengan bersih saat shutdown.", {
-        signal,
-        error: error instanceof Error ? error.message : String(error),
-      });
+      logger.error("Gagal menutup client dengan bersih saat shutdown.", { signal, error: describeError(error) });
     } finally {
       process.exit(0);
     }

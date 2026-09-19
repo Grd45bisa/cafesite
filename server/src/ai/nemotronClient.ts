@@ -1,5 +1,5 @@
 import type { ChatMessage } from "./types";
-import { logger } from "../whatsapp/logger";
+import { logger, describeError } from "../whatsapp/logger";
 
 const NVIDIA_API_URL = "https://integrate.api.nvidia.com/v1/chat/completions";
 const REQUEST_TIMEOUT_MS = 30_000;
@@ -79,8 +79,7 @@ export async function askAI(config: NemotronConfig, messages: ChatMessage[]): Pr
       return await callNvidiaApi(config, messages);
     } catch (error: unknown) {
       lastError = error;
-      const message = error instanceof Error ? error.message : String(error);
-      logger.warn("Percobaan panggilan NVIDIA API gagal.", { attempt, maxAttempts: MAX_ATTEMPTS, error: message });
+      logger.warn("Percobaan panggilan NVIDIA API gagal.", { attempt, maxAttempts: MAX_ATTEMPTS, error: describeError(error) });
 
       if (attempt < MAX_ATTEMPTS) {
         await sleep(1_000);
@@ -88,8 +87,7 @@ export async function askAI(config: NemotronConfig, messages: ChatMessage[]): Pr
     }
   }
 
-  const finalMessage = lastError instanceof Error ? lastError.message : String(lastError);
-  throw new Error(`Gagal memanggil NVIDIA API setelah ${MAX_ATTEMPTS} percobaan: ${finalMessage}`);
+  throw new Error(`Gagal memanggil NVIDIA API setelah ${MAX_ATTEMPTS} percobaan: ${describeError(lastError)}`);
 }
 
 export type { NemotronConfig };

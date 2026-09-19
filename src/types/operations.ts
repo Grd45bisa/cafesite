@@ -1,7 +1,7 @@
 import type { MenuItem } from "./index";
 
 export type StaffRole = "admin" | "staff";
-export type ModuleId = "orders" | "menu" | "tables" | "cafe" | "gallery" | "testimonials" | "faq" | "location" | "reports";
+export type ModuleId = "orders" | "menu" | "tables" | "cafe" | "gallery" | "testimonials" | "faq" | "location" | "reports" | "wa_bot";
 export interface StaffProfile { id: string; role: StaffRole }
 export interface StaffModule { id: ModuleId; enabled: boolean }
 export interface MenuRecord { id: string; data: MenuItem; is_available: boolean; sort_order: number }

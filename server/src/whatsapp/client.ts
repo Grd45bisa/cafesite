@@ -1,7 +1,7 @@
 import path from "node:path";
 import { Client, LocalAuth, type Message } from "whatsapp-web.js";
 import qrcodeTerminal from "qrcode-terminal";
-import { logger } from "./logger";
+import { logger, describeError } from "./logger";
 import type { BotEnv } from "../config/env";
 
 const SESSION_DIR = path.join(__dirname, "..", "..", "session");
@@ -79,9 +79,7 @@ export function createBotClient(env: BotEnv, onMessage: MessageHandler): BotClie
     clearReconnectTimer();
     reconnectTimer = setTimeout(() => {
       void client.initialize().catch((error: unknown) => {
-        logger.error("Gagal inisialisasi ulang client saat reconnect.", {
-          error: error instanceof Error ? error.message : String(error),
-        });
+        logger.error("Gagal inisialisasi ulang client saat reconnect.", { error: describeError(error) });
         scheduleReconnect("initialize_failed");
       });
     }, delay);
@@ -121,9 +119,7 @@ export function createBotClient(env: BotEnv, onMessage: MessageHandler): BotClie
 
   client.on("message", (message: Message) => {
     void Promise.resolve(onMessage(message)).catch((error: unknown) => {
-      logger.error("Gagal memproses pesan masuk.", {
-        error: error instanceof Error ? error.message : String(error),
-      });
+      logger.error("Gagal memproses pesan masuk.", { error: describeError(error) });
     });
   });
 
@@ -134,9 +130,7 @@ export function createBotClient(env: BotEnv, onMessage: MessageHandler): BotClie
     try {
       await client.initialize();
     } catch (error: unknown) {
-      logger.error("Gagal inisialisasi client saat start.", {
-        error: error instanceof Error ? error.message : String(error),
-      });
+      logger.error("Gagal inisialisasi client saat start.", { error: describeError(error) });
       scheduleReconnect("initialize_failed_on_start");
     }
   }

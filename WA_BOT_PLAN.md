@@ -308,6 +308,72 @@ Tugasmu: polish bot `server/` agar stabil jalan 24/7 di VPS (target Oracle Cloud
 
 ---
 
+### PHASE 6 — Prompt: Panel "WhatsApp Bot" di Dashboard Admin (Upload PDF → RAG)
+
+> Scope sudah diminta eksplisit oleh user (bagian dari dashboard admin, bukan lagi ❌). Fokus utama: admin bisa **upload PDF di web dashboard** → diproses di `server/` bot menjadi RAG untuk AI WhatsApp.
+
+```
+Tugasmu: tambahkan modul baru **"WhatsApp Bot"** di dashboard admin website (Next.js, folder `src/`) + worker di bot (`server/`) agar PDF yang di-upload admin otomatis jadi RAG yang dipakai AI WhatsApp. Lapisan website dan bot tetap terpisah: website cuma menerima file & menunjukkan status, proses chunk+embed WAJIB di `server/` (yang punya EMBEDDING_* config).
+
+## Prasyarat — baca & ikuti pola existing dulu
+- `src/components/admin/AdminDashboard.tsx`: daftar nav modul + render komponen per modul.
+- `src/components/admin/admin-api.ts`: helper `adminRequest` (route `/api/admin/...`, bearer token, JSON).
+- `src/components/admin/MenuFormModal.tsx`: pola upload ke Supabase Storage (`client.storage.from("cafe-assets").upload(...)` + `getPublicUrl`).
+- `src/app/api/admin/manage/route.ts` + `src/lib/server/api.ts` (`authorizeStaff`, `dbError`): pola route admin, semua tulis lewat `service_role` dari server Next.js.
+- `src/types/admin.ts`: union `AdminModule` — tambah nilai `"wa_bot"`.
+- `supabase/01_schema.sql`: check constraint `staff_modules.id` (daftar id tertutup) — perlu alter.
+- `supabase/04_rag_documents.sql`: tabel `rag_documents` + RPC `match_rag_documents`. Embedding = `nvidia/nemotron-3-embed-1b`, dimensi **2048**, kolom `halfvec(2048)` (Wajib, jangan `vector`/angka lain).
+- `server/src/rag/ingest.ts`, `chunk.ts`, `embed.ts`, `server/src/supabase/client.ts`: alur ingest yang sudah berjalan (CLI). Proses yang sama HARUS dipakai ulang oleh worker baru, jangan duplikasi logika.
+
+## Alur yang dibangun (queue lewat Supabase, bukan trigger DB)
+
+1. **Schema baru** (`supabase/06_wa_bot_dashboard.sql`, idempotent, jangan rusak file lain):
+   - `alter table public.staff_modules drop constraint staff_modules_id_check;` lalu `add constraint ... check (id in (...,'wa_bot'))` (tombstone semua id lama + `'wa_bot'`).
+   - Tabel antrian: `public.rag_ingest_jobs` (id uuid pk default gen_random_uuid(), `file_path text not null` [path storage], `source text not null` [nama pdf], `status text not null default 'pending' check (status in ('pending','processing','done','failed'))`, `error text`, `created_at`, `updated_at`).
+   - Storage bucket baru `wa-bot-rag` (bukan cafe-assets): `public=true`, `file_size_limit` ~10MB, `allowed_mime_types = array['application/pdf']`.
+   - RLS: `rag_ingest_jobs` select untuk `authenticated` via `can_module('wa_bot')`, insert/update dari website dan bot semua lewat `service_role`; `rag_documents` tetap seperti di 04 (SELECT anon/authed, tulis hanya service_role). Grant sesuai pola file 01 (revoke anon/authed dari tulis).
+   - Policy storage `wa-bot-rag`: read `anon,authenticated`; insert/update/delete `authenticated with check ((public.can_module('wa_bot')) and bucket_id='wa-bot-rag')`.
+
+2. **Website (Next.js)**:
+   - `src/types/admin.ts`: `AdminModule` tambah `"wa_bot"`.
+   - `AdminDashboard.tsx`: tambah nav item `{ id: "wa_bot", label: "WhatsApp Bot", caption: "Dokumen RAG & status asisten WhatsApp." }` ke grup "Operasional"; render komponen baru seperti pola modul lain.
+   - Komponen baru `src/components/admin/WaBotManager.tsx`:
+     - Upload area: `<input type="file" accept="application/pdf">` + drag&drop opsional. Simpan nama file dibersihkan (`lowercase`, spasi→`-`), path unik `rag/<timestamp>-<safeName>.pdf` (ikuti pola nama random/no-overwrite MenuFormModal).
+     - Setelah upload: `adminRequest` POST `/api/admin/wabot` → insert `rag_ingest_jobs` (status `pending`, `file_path`, `source`). Tampilkan pesan "PDF diterima, sedang diproses asisten bot…".
+     - Daftar dokumen: tabel job (file, status badge pending/process/done/failed, error jika failed, waktu) + ikon status. Muat ulang via polling ringan (mis. `setInterval` 5 detik saat halaman terbuka) ATAU Supabase Realtime `postgres_changes` pada `rag_ingest_jobs` (lihat pola Channel di AdminDashboard) — pilih yang paling sederhana, tulis konsisten.
+     - Tombol "Proses ulang" (reset job `done/failed` → `pending`) dan "Hapus" (hapus file storage + hapus attempt `source` dari `rag_ingest_jobs` + DELETE chunk `rag_documents where source=...` via route admin). Delete harus idempotent (file/chunk mungkin sudah tidak ada).
+     - Catatan teks di atas daftar: "PDF di sini jadi sumber pengetahuan asisten WhatsApp. Re-upload nama yang sama akan mengganti isi."
+   - API route baru `src/app/api/admin/wabot/route.ts` (GET=list jobs, POST=insert job+bucket check, DELETE=hapus):
+     - Pakai `authorizeStaff(request, permission)` dengan `permission` dari modul `wa_bot` (ikuti pola manage/route.ts - revoke anon/authed dari tulis).
+     - Semua tulis via `getServiceSupabase()` (service_role). Validasi input ketat: `source` ≤80 char, `file_path` whitelist hanya prefix `rag/` + akhiran `.pdf`, jangan percaya nama dari client mentah-mentah.
+     - Upload file dilakukan dari sisi CLIENT (`MenuFormModal` pattern) lalu role bot melakukan insert job — atau upload langsung di route jika mengikuti pola server-upload Next.js; konsisten dengan favorit yang ada, WAJIB validasi mime/pdf magic bytes di server (client hanya menyarankan `file.type`).
+
+3. **Bot (`server/`)**:
+   - Refactor kecil di `server/src/rag/`: tarik fungsi `extractPdfText`, `chunkText`, `embed` menjadi dipakai bersama oleh CLI `ingest.ts` dan worker baru (`rag/workers.ts` atau `rag/watch.ts`) supaya tidak ada 2 alur berbeda.
+   - Worker baru `server/src/rag/watch.ts`: script `npm run rag:watch` (pakai `tsx`):
+     - Bergulir forever dengan interval (default ~15 detik, env optional `RAG_POLL_MS`): ambil job `status=pending` (order `created_at asc`, limit mis. 5, stable). Set `status=processing` + `processing_by`/`started_at` (tambah kolom kalau perlu di 06).
+     - Download PDF dari storage: `client.storage.from("wa-bot-rag").download(file_path)` → buffer → `extractPdfText` → `chunkText` → `embed(...,"passage")`.
+     - Tulis ke `rag_documents`: HAPUS dulu chunk lama `where source=<source>` lalu insert (pola sama like CLI). Update job `status=done`, `error=null`.
+     - Kegagalan di row manapun → update job `status=failed` + `error=<message>` (skip, jangan terminasi worker). Kegagalan download storage sementara boleh dicoba ulang **1x** sebelum dianggap failed.
+     - Konkurensi: cukup 1 worker process; pakai `pg_advisory_lock(hashtextextended(id::text,0))` per job, atau ambil dengan `update ... returning` untuk mengunci — konsisten, dokumentasikan pilihan.
+   - Jangan ubah kontrak `askAI`, `handleChat`, `retrieve`, RPC `match_rag_documents`. `rag_documents` tetap hanya ditulis service_role dari bot.
+
+## Verifikasi
+- Di dashboard: upload `menu-info.pdf` → muncul di daftar, job `pending` → beberapa detik kemudian `done`. Ada file di Storage `wa-bot-rag/rag/...`.
+- Chat bot: "menu apa saja yang ada?" → jawaban memakai isi PDF (bukan asumsi). Re-upload PDF sama nama dengan isi berubah → jawaban ikut berubah (chunk lama dihapus).
+- Hapus PDF di dashboard → chunk `rag_documents` untuk `source` itu hilang, job hilang.
+- Upload file non-PDF / >10MB → ditolak ramah, tidak ada job dibuat.
+- User non-staff tanpa modul `wa_bot` → tidak melihat menu di nav & API menolak (403).
+- `npm run build` di root (Next.js) dan `server/` → 0 error sebelum dianggap selesai.
+
+## Catatan
+- Tidak menambah dependency berat: parsing PDF tetap `pdf-parse` (sudah di server bot). Di Next.js TIDAK perlu install parser — parse terjadi di worker bot.
+- Jangan menyimpan / merefresh credential embedding di folder website; yang menyentuh NVIDIA API tetap `server/`.
+- Ini penambahan modul dashboard (bukan fitur Phase 2 berbayar yang lain) — sebatas modul WhatsApp Bot saja.
+```
+
+---
+
 ## 5. Setelah Semua Phase Fix — FUTURE (BUKAN bagian sekarang)
 
 - Ganti keyword `bayar` → integrasi **iPaymu QRIS** sesuai `ipaymu.md` (endpoint direct payment qris, callback verifikasi, signature).

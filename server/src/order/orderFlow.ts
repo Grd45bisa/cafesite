@@ -4,7 +4,7 @@ import { fetchAvailableTables } from "./tables";
 import { createCafeOrder, markOrderPaid } from "./orderApi";
 import { isCancelIntent } from "./intent";
 import { getSession, startSession, touchSession, clearSession, type OrderSession, type CartLine } from "./session";
-import { logger } from "../whatsapp/logger";
+import { logger, describeError } from "../whatsapp/logger";
 import { hashIdentity } from "../whatsapp/privacy";
 
 const GENERIC_ERROR_REPLY = "Sebentar ya, saya lagi gangguan koneksi. Coba lagi.";
@@ -68,10 +68,7 @@ export async function handleOrderMessage(env: BotEnv, chatId: string, text: stri
         return GENERIC_ERROR_REPLY;
     }
   } catch (error: unknown) {
-    logger.error("Order flow gagal karena error tidak terduga.", {
-      identity: hashIdentity(chatId),
-      error: error instanceof Error ? error.message : String(error),
-    });
+    logger.error("Order flow gagal karena error tidak terduga.", { identity: hashIdentity(chatId), error: describeError(error) });
     return GENERIC_ERROR_REPLY;
   }
 }
@@ -92,7 +89,7 @@ async function handleCollectingItems(env: BotEnv, session: OrderSession, text: s
   try {
     menu = await fetchMenu(getSupabaseConfig(env));
   } catch (error: unknown) {
-    logger.error("Gagal membaca menu saat order flow.", { error: error instanceof Error ? error.message : String(error) });
+    logger.error("Gagal membaca menu saat order flow.", { error: describeError(error) });
     return GENERIC_ERROR_REPLY;
   }
 
@@ -141,7 +138,7 @@ async function handleAwaitingFulfillment(env: BotEnv, session: OrderSession, tex
     try {
       tables = await fetchAvailableTables(getSupabaseConfig(env));
     } catch (error: unknown) {
-      logger.error("Gagal membaca daftar meja saat order flow.", { error: error instanceof Error ? error.message : String(error) });
+      logger.error("Gagal membaca daftar meja saat order flow.", { error: describeError(error) });
       return GENERIC_ERROR_REPLY;
     }
 
@@ -171,7 +168,7 @@ async function handleAwaitingTable(env: BotEnv, session: OrderSession, text: str
   try {
     tables = await fetchAvailableTables(getSupabaseConfig(env));
   } catch (error: unknown) {
-    logger.error("Gagal membaca daftar meja saat validasi.", { error: error instanceof Error ? error.message : String(error) });
+    logger.error("Gagal membaca daftar meja saat validasi.", { error: describeError(error) });
     return GENERIC_ERROR_REPLY;
   }
 
@@ -249,17 +246,21 @@ async function handleAwaitingConfirmation(env: BotEnv, chatId: string, session: 
       session.cart,
     );
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    logger.error("Gagal membuat pesanan.", { identity: hashIdentity(chatId), error: message });
-    return `Maaf, pesanan belum bisa diproses: ${message}`;
+    // Pesan ke user tetap ringkas (RPC melempar pesan Indonesia yang layak
+    // ditampilkan langsung, mis. "Meja tidak tersedia..."); log terpisah
+    // pakai describeError supaya ada stack trace/detail lengkap kalau
+    // errornya bukan dari RPC (mis. network/bug kode).
+    const userMessage = error instanceof Error ? error.message : String(error);
+    logger.error("Gagal membuat pesanan.", { identity: hashIdentity(chatId), error: describeError(error) });
+    return `Maaf, pesanan belum bisa diproses: ${userMessage}`;
   }
 
   try {
     order = await markOrderPaid(supabaseConfig, order.id);
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    logger.error("Gagal menandai pesanan lunas.", { identity: hashIdentity(chatId), orderId: order.id, error: message });
-    return `Pesanan sudah tercatat dengan nomor antrian ${order.queue_number}, tapi konfirmasi bayar belum berhasil: ${message}. Hubungi kasir untuk konfirmasi manual.`;
+    const userMessage = error instanceof Error ? error.message : String(error);
+    logger.error("Gagal menandai pesanan lunas.", { identity: hashIdentity(chatId), orderId: order.id, error: describeError(error) });
+    return `Pesanan sudah tercatat dengan nomor antrian ${order.queue_number}, tapi konfirmasi bayar belum berhasil: ${userMessage}. Hubungi kasir untuk konfirmasi manual.`;
   }
 
   clearSession(chatId);
