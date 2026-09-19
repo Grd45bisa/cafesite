@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import type { RagIngestJob } from "@/types";
@@ -32,22 +32,28 @@ export default function WaBotManager(): React.JSX.Element {
   async function enqueue(record: { file_path: string; source: string }): Promise<void> {
     await adminRequest("wabot", { method: "POST", body: JSON.stringify(record) });
     setUploaded(null);
-    setMessage("PDF diterima, sedang diproses asisten bot…");
+    setMessage("Dokumen diterima, sedang diproses asisten bot…");
   }
   async function upload(file: File): Promise<void> {
     setBusy(true); setError(""); setMessage("");
     try {
-      if (file.type !== "application/pdf" || !file.name.toLowerCase().endsWith(".pdf")) throw new Error("Pilih file PDF.");
-      if (file.size > 10 * 1024 * 1024) throw new Error("Ukuran PDF maksimal 10 MB.");
-      if (await file.slice(0, 5).text() !== "%PDF-") throw new Error("File harus berupa PDF yang valid.");
-      const stem = file.name.slice(0, -4).toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9._-]/g, "").replace(/^[^a-z0-9]+/, "");
-      if (!stem || stem.length > 76) throw new Error("Gunakan nama file 1–76 karakter sebelum .pdf, dengan huruf atau angka.");
-      const source = `${stem}.pdf`;
+      const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+      const isMd = file.type === "text/markdown" || file.name.toLowerCase().endsWith(".md");
+      if (!isPdf && !isMd) throw new Error("Pilih file PDF (.pdf) atau Markdown (.md).");
+      if (file.size > 10 * 1024 * 1024) throw new Error("Ukuran file maksimal 10 MB.");
+      const ext = isPdf ? ".pdf" : ".md";
+      if (isPdf && (await file.slice(0, 5).text()) !== "%PDF-") throw new Error("File harus berupa PDF yang valid.");
+      if (isMd && !(await file.text()).trim()) throw new Error("File Markdown tidak boleh kosong.");
+      const rawStem = file.name.slice(0, -ext.length);
+      const stem = rawStem.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9._-]/g, "").replace(/^[^a-z0-9]+/, "");
+      if (!stem || stem.length > 76) throw new Error(`Gunakan nama file 1–76 karakter sebelum ${ext}, dengan huruf atau angka.`);
+      const source = `${stem}${ext}`;
       const file_path = `rag/${Date.now()}-${crypto.randomUUID()}-${source}`;
       const client = getBrowserSupabase();
       if (!client) throw new Error("Supabase belum tersedia.");
-      const { error: uploadError } = await client.storage.from("wa-bot-rag").upload(file_path, file, { contentType: "application/pdf", upsert: false });
-      if (uploadError) throw new Error("PDF belum berhasil diunggah. Periksa akses modul dan koneksi.");
+      const contentType = isPdf ? "application/pdf" : "text/markdown";
+      const { error: uploadError } = await client.storage.from("wa-bot-rag").upload(file_path, file, { contentType, upsert: false });
+      if (uploadError) throw new Error("Dokumen belum berhasil diunggah. Periksa akses modul dan koneksi.");
       const record = { file_path, source };
       setUploaded(record);
       await enqueue(record);
@@ -55,11 +61,11 @@ export default function WaBotManager(): React.JSX.Element {
     finally { setBusy(false); }
   }
   async function action(method: "PATCH" | "DELETE", job: RagIngestJob): Promise<void> {
-    if (method === "DELETE" && !window.confirm(`Hapus ${job.source} beserta seluruh percobaan dan pengetahuan dari PDF ini?`)) return;
+    if (method === "DELETE" && !window.confirm(`Hapus ${job.source} beserta seluruh percobaan dan pengetahuan dari dokumen ini?`)) return;
     setBusy(true); setError(""); setMessage("");
     try {
       await adminRequest("wabot", { method, body: JSON.stringify({ id: job.id, source: job.source }) });
-      setMessage(method === "DELETE" ? "PDF dan pengetahuannya sudah dihapus." : "PDF masuk antrean untuk diproses ulang.");
+      setMessage(method === "DELETE" ? "Dokumen dan pengetahuannya sudah dihapus." : "Dokumen masuk antrean untuk diproses ulang.");
       const result = await adminRequest<{ data: RagIngestJob[] }>("wabot");
       setJobs(result.data);
     } catch (cause) { setError(adminError(cause)); }
@@ -69,11 +75,11 @@ export default function WaBotManager(): React.JSX.Element {
     <section aria-label="Dokumen asisten WhatsApp" className="min-w-0 space-y-6">
       <section className="rounded-2xl border border-charcoal-border bg-charcoal p-5 md:p-6">
         <h2 className="font-serif text-2xl">Pengetahuan asisten</h2>
-        <p className="mt-2 text-sm leading-6 text-offwhite-muted">PDF di sini jadi sumber pengetahuan asisten WhatsApp. Re-upload nama yang sama akan mengganti isi.</p>
-        <label htmlFor="rag-pdf" className="mt-5 block text-sm text-latte">Unggah PDF · maksimal 10 MB · berisi teks yang dapat disalin</label>
-        <input id="rag-pdf" type="file" accept="application/pdf" disabled={busy || uploaded !== null} className="mt-3 block min-h-11 w-full min-w-0 text-sm text-offwhite file:mr-3 file:rounded-lg file:border-0 file:bg-charcoal-light file:px-3 file:py-3 file:text-offwhite" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void upload(file); }} />
+        <p className="mt-2 text-sm leading-6 text-offwhite-muted">Dokumen (PDF atau Markdown .md) di sini jadi sumber pengetahuan asisten WhatsApp. Re-upload nama yang sama akan mengganti isi.</p>
+        <label htmlFor="rag-file" className="mt-5 block text-sm text-latte">Unggah PDF atau Markdown (.md) · maksimal 10 MB · berisi teks</label>
+        <input id="rag-file" type="file" accept=".pdf,.md,application/pdf,text/markdown,text/plain" disabled={busy || uploaded !== null} className="mt-3 block min-h-11 w-full min-w-0 text-sm text-offwhite file:mr-3 file:rounded-lg file:border-0 file:bg-charcoal-light file:px-3 file:py-3 file:text-offwhite" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void upload(file); }} />
         {busy && <p role="status" className="mt-3 text-sm text-latte">Sedang menyimpan…</p>}
-        {uploaded && !busy && <button className={`${adminButtonClass} mt-3`} onClick={() => { setBusy(true); setError(""); void enqueue(uploaded).catch((cause: unknown) => setError(adminError(cause))).finally(() => setBusy(false)); }}>Coba daftarkan PDF kembali</button>}
+        {uploaded && !busy && <button className={`${adminButtonClass} mt-3`} onClick={() => { setBusy(true); setError(""); void enqueue(uploaded).catch((cause: unknown) => setError(adminError(cause))).finally(() => setBusy(false)); }}>Coba daftarkan dokumen kembali</button>}
         {message && <p role="status" className="mt-3 text-sm text-latte">{message}</p>}
         {error && <p role="alert" className="mt-3 break-words text-sm text-terracotta-light">{error}</p>}
       </section>
@@ -87,7 +93,7 @@ export default function WaBotManager(): React.JSX.Element {
             <td className="p-4"><div className="flex flex-wrap gap-2">{["done", "failed"].includes(job.status) && <button disabled={busy} className={adminSecondaryClass} onClick={() => void action("PATCH", job)}>Proses ulang</button>}<button disabled={busy} className={adminSecondaryClass} onClick={() => void action("DELETE", job)}>Hapus</button></div></td>
           </tr>)}</tbody>
         </table>
-        {!jobs.length && <p className="p-4 text-sm text-offwhite-muted">{loading ? "Memuat dokumen…" : "Belum ada PDF. Unggah informasi kafe untuk asisten."}</p>}
+        {!jobs.length && <p className="p-4 text-sm text-offwhite-muted">{loading ? "Memuat dokumen…" : "Belum ada dokumen. Unggah PDF atau Markdown (.md) informasi kafe untuk asisten."}</p>}
       </section>
     </section>
   );

@@ -1,4 +1,4 @@
-﻿import { randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { setTimeout as sleep } from "node:timers/promises";
 import { loadEnv, getEmbeddingConfig, getSupabaseConfig } from "../config/env";
 import { createServiceRoleClient } from "../supabase/client";
@@ -32,13 +32,13 @@ async function main(): Promise<void> {
             if (!result.error && result.data) { file = result.data; break; }
             if (attempt === 0) await sleep(1000);
           }
-          if (!file) throw new Error("PDF gagal diunduh setelah dua percobaan. Coba unggah kembali.");
+          if (!file) throw new Error("Dokumen gagal diunduh setelah dua percobaan. Coba unggah kembali.");
           const saved = await ingestPdf(client, config, new Uint8Array(await file.arrayBuffer()), job.source, { id: job.id, worker });
           logger.info(saved ? "Job RAG selesai." : "Job RAG sudah dihapus; hasil diabaikan.", { id: job.id });
         } catch (cause) {
           logger.error("Job RAG gagal.", { id: job.id, error: describeError(cause) });
           // Do not expose upstream responses/configuration in the public dashboard.
-          const { error: failError } = await client.from("rag_ingest_jobs").update({ status: "failed", error: "PDF belum dapat diproses. Pastikan PDF berisi teks, lalu proses ulang. Jika berulang, periksa log worker.", updated_at: new Date().toISOString() }).eq("id", job.id).eq("status", "processing").eq("processing_by", worker);
+          const { error: failError } = await client.from("rag_ingest_jobs").update({ status: "failed", error: "Dokumen belum dapat diproses. Pastikan file (PDF/Markdown) berisi teks yang valid, lalu proses ulang. Jika berulang, periksa log worker.", updated_at: new Date().toISOString() }).eq("id", job.id).eq("status", "processing").eq("processing_by", worker);
           if (failError) throw new Error(`Gagal mencatat status job ${job.id}: ${failError.message}`);
         }
       }

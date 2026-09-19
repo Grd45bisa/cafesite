@@ -1,4 +1,4 @@
-﻿import { readFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { loadEnv, getEmbeddingConfig, getSupabaseConfig } from "../config/env";
 import { createServiceRoleClient } from "../supabase/client";
@@ -7,7 +7,7 @@ import { ingestPdf } from "./pipeline";
 
 async function main(): Promise<void> {
   const argument = process.argv[2];
-  if (!argument) throw new Error("Argumen path PDF wajib diisi. Contoh: npm run rag:ingest docs/info.pdf");
+  if (!argument) throw new Error("Argumen path dokumen wajib diisi. Contoh: npm run rag:ingest docs/info.md atau docs/info.pdf");
   const filePath = path.resolve(argument);
   const source = path.basename(filePath);
   const env = loadEnv();

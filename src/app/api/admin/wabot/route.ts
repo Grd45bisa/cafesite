@@ -1,10 +1,10 @@
-﻿import { apiError, authorizeStaff, bodyJson, dbError, json } from "@/lib/server/api";
+import { apiError, authorizeStaff, bodyJson, dbError, json } from "@/lib/server/api";
 import { HttpError, textValue, uuidValue } from "@/lib/server/validation";
 
 const bucket = "wa-bot-rag";
 function sourceValue(value: unknown): string {
-  const source = textValue(value, "Nama PDF", 80);
-  if (!/^[a-z0-9][a-z0-9._-]*\.pdf$/.test(source)) throw new HttpError(400, "Nama PDF hanya boleh berisi huruf, angka, titik, dan tanda hubung.");
+  const source = textValue(value, "Nama Dokumen", 80);
+  if (!/^[a-z0-9][a-z0-9._-]*\.(pdf|md)$/.test(source)) throw new HttpError(400, "Nama dokumen harus berekstensi .pdf atau .md.");
   return source;
 }
 export async function GET(request: Request): Promise<Response> {
@@ -20,12 +20,22 @@ export async function POST(request: Request): Promise<Response> {
     const { db } = await authorizeStaff(request, "wa_bot");
     const body = await bodyJson(request);
     const source = sourceValue(body.source);
-    const filePath = textValue(body.file_path, "Path PDF", 180);
-    if (!/^rag\/[0-9]+-[a-f0-9-]{36}-[a-z0-9][a-z0-9._-]*\.pdf$/.test(filePath) || !filePath.endsWith(`-${source}`)) throw new HttpError(400, "Path PDF tidak valid.");
+    const filePath = textValue(body.file_path, "Path Dokumen", 180);
+    if (!/^rag\/[0-9]+-[a-f0-9-]{36}-[a-z0-9][a-z0-9._-]*\.(pdf|md)$/.test(filePath) || !filePath.endsWith(`-${source}`)) throw new HttpError(400, "Path dokumen tidak valid.");
     const { data: file, error: downloadError } = await db.storage.from(bucket).download(filePath);
-    if (downloadError || !file) throw new HttpError(400, "PDF belum tersedia di Storage. Unggah kembali.");
-    if (file.size > 10 * 1024 * 1024) throw new HttpError(413, "Ukuran PDF maksimal 10 MB.");
-    if (file.type.split(";")[0] !== "application/pdf" || await file.slice(0, 5).text() !== "%PDF-") throw new HttpError(400, "File harus berupa PDF yang valid.");
+    if (downloadError || !file) throw new HttpError(400, "Dokumen belum tersedia di Storage. Unggah kembali.");
+    if (file.size > 10 * 1024 * 1024) throw new HttpError(413, "Ukuran dokumen maksimal 10 MB.");
+    if (source.endsWith(".pdf")) {
+      const mime = file.type.split(";")[0];
+      if ((mime && mime !== "application/pdf") || (await file.slice(0, 5).text()) !== "%PDF-") {
+        throw new HttpError(400, "File harus berupa PDF yang valid.");
+      }
+    } else if (source.endsWith(".md")) {
+      const text = await file.text();
+      if (!text.trim()) {
+        throw new HttpError(400, "File Markdown tidak boleh kosong.");
+      }
+    }
     const { error } = await db.from("rag_ingest_jobs").upsert({ file_path: filePath, source }, { onConflict: "file_path", ignoreDuplicates: true });
     dbError(error);
     return json({ ok: true }, 201);
